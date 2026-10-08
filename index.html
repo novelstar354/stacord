@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Stacord</title>
-<link rel="icon" href="image.png" sizes="16x16" type="image/png" />  
+
 <style>
 *{
   box-sizing:border-box
@@ -1503,74 +1503,55 @@ function validId(id){
    API REQUEST
 ===================================================== */
 
-async function api(
-  action,
-  data = {}
-){
+async function api(action, data = {}){
 
   if(!sessionToken){
-
-    throw new Error(
-      "ログインしてください。"
-    );
-
+    throw new Error("ログインしてください。");
   }
 
-  const response =
-    await fetch(
-      API_FUNCTION,
-      {
-        method:"POST",
-
-        headers:{
-          "Content-Type":
-            "application/json",
-
-          "Authorization":
-            "Bearer " +
-            sessionToken,
-
-          "apikey":
-            SUPABASE_ANON_KEY
-        },
-
-        body:
-          JSON.stringify({
-            action,
-            ...data
-          })
-      }
-    );
-
-
-  let result = null;
+  let response;
 
   try{
-
-    result =
-      await response.json();
-
-  }catch{
-
-    result = {};
-
+    response = await fetch(API_FUNCTION, {
+      method:"POST",
+      mode:"cors",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":"Bearer " + sessionToken,
+        "apikey":SUPABASE_ANON_KEY
+      },
+      body:JSON.stringify({action, ...data})
+    });
+  }catch(error){
+    throw new Error("Stacord APIに接続できませんでした: " + (error?.message || "通信エラー"));
   }
 
+  let result = {};
+  const raw = await response.text();
+
+  try{
+    result = raw ? JSON.parse(raw) : {};
+  }catch{
+    result = { raw };
+  }
 
   if(!response.ok){
-
+    const detail = result?.detail || result?.message || result?.raw || "";
     throw new Error(
-      result?.error ||
-      "APIエラーが発生しました。"
+      (result?.error || `APIエラー (${response.status})`) +
+      (detail ? "\n" + detail : "")
     );
-
   }
 
+  if(result?.error){
+    throw new Error(
+      result.error +
+      (result.detail ? "\n" + result.detail : "")
+    );
+  }
 
   return result;
-
 }
-
 
 /* =====================================================
    AUTH API
@@ -2862,102 +2843,65 @@ async function selectConversation(id){
 
 async function loadMessages(){
 
-  if(
-    !sessionToken ||
-    !currentConversation
-  ){
-
+  if(!sessionToken || !currentConversation){
     return;
-
   }
-
-
-  /*
-    入力欄の値は絶対に変更しない。
-    同期時にチャット相手や入力内容が
-    リセットされないようにする。
-  */
 
   try{
+    const result = await api("messages", {
+      conversation_id: currentConversation
+    });
 
-    const result =
-      await api(
-        "messages",
-        {
-          conversation_id:
-            currentConversation
-        }
-      );
+    const messages = Array.isArray(result?.messages)
+      ? result.messages
+      : [];
 
+    const box = $("messages");
+    if(!box) return;
 
-    const messages =
-      result.messages ||
-      [];
-
-
-    const oldScroll =
-      $("messages").scrollTop;
-
+    const oldScroll = box.scrollTop;
     const wasBottom =
-      $("messages").scrollHeight -
-      $("messages").scrollTop -
-      $("messages").clientHeight <
-      80;
+      box.scrollHeight - box.scrollTop - box.clientHeight < 80;
 
-
-    $("messages").innerHTML =
-      messages
-        .map(
-          message => `
-
-<div
-  class="msg ${
-    message.sender_id ===
-    account.id
-      ? "mine"
-      : ""
-  }"
->
-
-  ${safe(message.body)}
-
-  <small>
-    ${
-      message.sender_id ===
-      account.id
-        ? "自分"
-        : "相手"
-    }
-  </small>
-
-</div>
-
-`
-        )
-        .join("");
-
+    box.innerHTML = messages.map(message => `
+      <div class="msg ${message.sender_id === account?.id ? "mine" : ""}">
+        ${safe(message.body)}
+        <small>
+          ${message.sender_id === account?.id ? "自分" : safe(message.sender?.display_name || "相手")}
+          · ${safe(formatMessageTime(message.created_at))}
+        </small>
+      </div>
+    `).join("");
 
     if(wasBottom){
-
-      $("messages").scrollTop =
-        $("messages").scrollHeight;
-
+      box.scrollTop = box.scrollHeight;
     }else{
-
-      $("messages").scrollTop =
-        oldScroll;
-
+      box.scrollTop = oldScroll;
     }
 
-
   }catch(error){
-
-    console.error(error);
-
+    console.error("loadMessages error:", error);
+    const box = $("messages");
+    if(box){
+      box.innerHTML = `
+        <div style="padding:20px;text-align:center;color:#ff8798;white-space:pre-wrap;">
+          メッセージを読み込めませんでした。<br><br>
+          ${safe(error?.message || "不明なエラー")}
+        </div>
+      `;
+    }
   }
-
 }
 
+function formatMessageTime(value){
+  if(!value) return "";
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString([], {
+    hour:"2-digit",
+    minute:"2-digit"
+  });
+}
 
 /* =====================================================
    SEND MESSAGE
@@ -2965,84 +2909,43 @@ async function loadMessages(){
 
 async function sendMessage(){
 
-  if(
-    !currentConversation ||
-    !sessionToken
-  ){
-
+  if(!currentConversation || !sessionToken){
+    toast("チャットを選択してください。");
     return;
-
   }
 
+  const input = $("messageInput");
+  const button = $("sendMsg");
+  const original = input.value;
+  const value = original.trim();
 
-  const input =
-    $("messageInput");
-
-
-  const value =
-    input.value.trim();
-
-
-  if(!value)
-    return;
-
-
-  /*
-    送信前に値を保存。
-    APIエラーでも入力内容を消さない。
-  */
-
-  const original =
-    input.value;
-
+  if(!value) return;
 
   try{
+    input.disabled = true;
+    if(button) button.disabled = true;
 
-    input.disabled =
-      true;
+    const result = await api("send_message", {
+      conversation_id: currentConversation,
+      body: value
+    });
 
+    if(!result?.ok && !result?.message){
+      throw new Error("サーバーから送信成功の応答がありませんでした。");
+    }
 
-    await api(
-      "send_message",
-      {
-        conversation_id:
-          currentConversation,
-
-        body:
-          value
-      }
-    );
-
-
-    /*
-      送信成功時だけ入力欄を空にする。
-    */
-
-    input.value =
-      "";
-
-
+    input.value = "";
     await loadMessages();
 
-
   }catch(error){
-
-    input.value =
-      original;
-
-    toast(
-      error.message
-    );
-
+    console.error("sendMessage error:", error);
+    input.value = original;
+    toast(error?.message || "メッセージを送信できませんでした。");
   }finally{
-
-    input.disabled =
-      false;
-
+    input.disabled = false;
+    if(button) button.disabled = false;
     input.focus();
-
   }
-
 }
 
 
