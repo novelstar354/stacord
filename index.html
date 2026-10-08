@@ -600,6 +600,235 @@ button{
   }
 
 }
+/* =========================================
+   Stacord レスポンシブ対応
+   現在のデザインを変更しない版
+   ========================================= */
+
+/* 横幅が小さくなったときだけ調整 */
+@media (max-width: 900px) {
+  .app,
+  .main-container,
+  .layout {
+    max-width: 100%;
+  }
+
+  .content,
+  .main-content {
+    min-width: 0;
+  }
+
+  .chat-layout {
+    grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+  }
+}
+
+
+/* =========================================
+   スマートフォン
+   ========================================= */
+
+@media (max-width: 700px) {
+
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* 既存のコンテナを画面幅に収める */
+  .app,
+  .main,
+  .content,
+  .main-content,
+  .container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* 横並びになっている場所だけ縮小 */
+  .topbar {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .content,
+  .main-content {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  /* カードが画面からはみ出さないようにする */
+  .card {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  /* ボタン・入力欄 */
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+
+  /* 検索欄など */
+  .search-row {
+    min-width: 0;
+  }
+
+  .search-row input {
+    min-width: 0;
+  }
+
+  /* チャット */
+  .chat-layout {
+    min-width: 0;
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .chat-sidebar,
+  .chat-window {
+    min-width: 0;
+  }
+
+  .messages {
+    min-width: 0;
+  }
+
+  .message {
+    max-width: 85%;
+    overflow-wrap: anywhere;
+  }
+
+  /* チャット入力 */
+  .chat-input {
+    min-width: 0;
+  }
+
+  .chat-input textarea {
+    min-width: 0;
+  }
+}
+
+
+/* =========================================
+   小さいスマートフォン
+   ========================================= */
+
+@media (max-width: 520px) {
+
+  /* サイドバーを少しだけ細く */
+  .sidebar {
+    width: 190px;
+    min-width: 190px;
+  }
+
+  /* メイン部分 */
+  .content,
+  .main-content {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  /* チャット一覧を上に移動して縦型にする */
+  .chat-layout {
+    display: flex;
+    flex-direction: column;
+
+    height: auto;
+    min-height: calc(100vh - 120px);
+  }
+
+  .chat-sidebar {
+    width: 100%;
+    max-height: 150px;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .chat-window {
+    width: 100%;
+    min-height: 450px;
+  }
+
+  .chat-item {
+    flex-shrink: 0;
+  }
+
+  /* 入力欄 */
+  .chat-input {
+    gap: 6px;
+  }
+
+  .chat-input button {
+    flex-shrink: 0;
+  }
+}
+
+
+/* =========================================
+   極小画面
+   ========================================= */
+
+@media (max-width: 380px) {
+
+  .sidebar {
+    width: 165px;
+    min-width: 165px;
+  }
+
+  .content,
+  .main-content {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .chat-window {
+    min-height: 400px;
+  }
+
+  .message {
+    max-width: 90%;
+  }
+}
+
+
+/* =========================================
+   タッチ端末
+   デザインは変更せず操作性だけ改善
+   ========================================= */
+
+@media (hover: none) {
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+
+/* =========================================
+   横向きスマホ
+   ========================================= */
+
+@media (max-width: 700px) and (orientation: landscape) {
+
+  .chat-window {
+    min-height: 300px;
+  }
+
+  .chat-layout {
+    min-height: calc(100vh - 90px);
+  }
+}
 </style>
 </head>
 
