@@ -1,0 +1,3408 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Stacord</title>
+
+<style>
+*{
+  box-sizing:border-box
+}
+
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+}
+
+body{
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  background:#11131a;
+  color:#eef1f7;
+  overflow:hidden;
+}
+
+button,input,textarea{
+  font:inherit;
+}
+
+button{
+  cursor:pointer;
+  border:0;
+}
+
+.hidden{
+  display:none!important;
+}
+
+.muted{
+  color:#9ca3b2;
+  font-size:14px;
+}
+
+/* =========================
+   AUTH
+========================= */
+
+#auth{
+  width:100%;
+  height:100vh;
+  display:grid;
+  place-items:center;
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      #2c2547 0,
+      #11131a 42%
+    ),
+    #11131a;
+}
+
+.card{
+  width:min(430px,92vw);
+  background:#191c25;
+  border:1px solid #303543;
+  border-radius:18px;
+  padding:28px;
+  box-shadow:0 20px 70px #0008;
+}
+
+.logo{
+  font-size:32px;
+  font-weight:800;
+  letter-spacing:-1px;
+  margin-bottom:8px;
+}
+
+.logo span,
+.brand b{
+  color:#a78bfa;
+}
+
+.tabs{
+  display:flex;
+  gap:8px;
+  margin:22px 0;
+}
+
+.tabs button{
+  flex:1;
+  background:#242834;
+  color:#b8becb;
+  border-radius:10px;
+  padding:10px 14px;
+}
+
+.tabs button.active{
+  background:#7c5cff;
+  color:white;
+}
+
+.field{
+  margin:12px 0;
+}
+
+.field label{
+  display:block;
+  font-size:13px;
+  color:#aeb5c3;
+  margin-bottom:6px;
+}
+
+.field input,
+.field textarea{
+  width:100%;
+  background:#10131a;
+  border:1px solid #343946;
+  color:white;
+  border-radius:10px;
+  padding:12px;
+  outline:none;
+}
+
+.field input:focus,
+.field textarea:focus{
+  border-color:#7c5cff;
+}
+
+.primary{
+  width:100%;
+  background:#7c5cff;
+  color:white;
+  border-radius:10px;
+  padding:12px;
+  font-weight:700;
+  margin-top:8px;
+}
+
+.primary:hover{
+  filter:brightness(1.08);
+}
+
+.primary:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+.error{
+  color:#ff8798;
+  margin-top:10px;
+  min-height:18px;
+}
+
+.success{
+  color:#7ee7ad;
+  margin-top:10px;
+}
+
+.small{
+  font-size:12px;
+}
+
+/* =========================
+   APP
+========================= */
+
+#app{
+  height:100vh;
+  display:grid;
+  grid-template-columns:240px 1fr 310px;
+  background:#12151c;
+}
+
+.sidebar{
+  background:#171a22;
+  border-right:1px solid #292e39;
+  display:flex;
+  flex-direction:column;
+  padding:16px;
+}
+
+.brand{
+  font-size:25px;
+  font-weight:800;
+  margin:5px 8px 20px;
+}
+
+.nav{
+  display:grid;
+  gap:7px;
+}
+
+.nav button{
+  background:#242834;
+  color:#b8becb;
+  border-radius:10px;
+  padding:10px 14px;
+  text-align:left;
+}
+
+.nav button:hover{
+  background:#303543;
+}
+
+.nav button.active{
+  background:#7c5cff;
+  color:white;
+}
+
+.userbox{
+  margin-top:auto;
+  background:#20242e;
+  border-radius:12px;
+  padding:12px;
+}
+
+.userrow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+}
+
+.avatar{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#7c5cff;
+  display:grid;
+  place-items:center;
+  font-weight:700;
+  flex:none;
+}
+
+.usertext{
+  display:flex;
+  gap:9px;
+  align-items:center;
+  min-width:0;
+}
+
+.usertext>div:last-child{
+  min-width:0;
+}
+
+.usertext b{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:120px;
+}
+
+.logout{
+  background:#303541;
+  color:#ddd;
+  border-radius:8px;
+  padding:7px;
+}
+
+.account-switch{
+  width:100%;
+  margin-top:10px;
+  background:#292f3b;
+  color:#fff;
+  border-radius:8px;
+  padding:8px;
+}
+
+/* =========================
+   MAIN
+========================= */
+
+.main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+}
+
+.topbar{
+  height:62px;
+  border-bottom:1px solid #292e39;
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  font-weight:700;
+}
+
+.content{
+  padding:22px;
+  overflow:auto;
+  height:calc(100vh - 62px);
+}
+
+.section{
+  display:none;
+}
+
+.section.active{
+  display:block;
+}
+
+.section h2{
+  margin:0 0 18px;
+}
+
+.item{
+  background:#191d26;
+  border:1px solid #2d3340;
+  border-radius:14px;
+  padding:15px;
+}
+
+.item h3{
+  margin:0 0 6px;
+}
+
+.item p{
+  margin:5px 0;
+  color:#aeb5c3;
+}
+
+.item button{
+  margin:5px 5px 0 0;
+  padding:8px 10px;
+  border-radius:8px;
+  background:#292f3b;
+  color:white;
+}
+
+.item button:hover{
+  filter:brightness(1.1);
+}
+
+.primarybtn{
+  background:#7c5cff!important;
+  color:white!important;
+}
+
+.dangerbtn{
+  background:#a33a50!important;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:
+    repeat(auto-fill,minmax(240px,1fr));
+  gap:14px;
+}
+
+.search{
+  width:100%;
+  background:#171a22;
+  border:1px solid #343946;
+  color:white;
+  padding:11px;
+  border-radius:10px;
+  margin-bottom:10px;
+  outline:none;
+}
+
+.search:focus{
+  border-color:#7c5cff;
+}
+
+/* =========================
+   CHAT
+========================= */
+
+.chat-layout{
+  height:calc(100vh - 62px);
+  display:grid;
+  grid-template-columns:280px 1fr;
+}
+
+.chat-list{
+  border-right:1px solid #292e39;
+  overflow:auto;
+  padding:10px;
+}
+
+.chatitem{
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:5px;
+  cursor:pointer;
+}
+
+.chatitem:hover,
+.chatitem.sel{
+  background:#232834;
+}
+
+.chatname{
+  font-weight:700;
+}
+
+.chatpreview{
+  font-size:12px;
+  color:#9299a8;
+  margin-top:4px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.chat{
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  height:100%;
+}
+
+.chathead{
+  padding:15px 18px;
+  border-bottom:1px solid #292e39;
+  font-weight:700;
+}
+
+.messages{
+  flex:1;
+  overflow:auto;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.msg{
+  max-width:72%;
+  background:#252a35;
+  border-radius:12px;
+  padding:9px 12px;
+  align-self:flex-start;
+  word-break:break-word;
+}
+
+.msg.mine{
+  background:#684fe0;
+  align-self:flex-end;
+}
+
+.msg small{
+  display:block;
+  color:#c5c9d3;
+  font-size:10px;
+  margin-top:4px;
+}
+
+.composer{
+  display:flex;
+  gap:8px;
+  padding:12px;
+  border-top:1px solid #292e39;
+}
+
+.composer input{
+  flex:1;
+  min-width:0;
+  background:#1b1f28;
+  border:1px solid #343946;
+  color:white;
+  border-radius:10px;
+  padding:12px;
+  outline:none;
+}
+
+.composer input:focus{
+  border-color:#7c5cff;
+}
+
+.composer button{
+  background:#7c5cff;
+  color:white;
+  border-radius:10px;
+  padding:0 18px;
+}
+
+/* =========================
+   RIGHT
+========================= */
+
+.right{
+  background:#171a22;
+  border-left:1px solid #292e39;
+  padding:18px;
+  overflow:auto;
+}
+
+.right h3{
+  margin-top:3px;
+}
+
+.listrow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  padding:10px 0;
+  border-bottom:1px solid #292e39;
+}
+
+.listrow button{
+  background:#292f3b;
+  color:white;
+  padding:7px 9px;
+  border-radius:8px;
+}
+
+/* =========================
+   MODAL
+========================= */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:#0009;
+  display:grid;
+  place-items:center;
+  z-index:10;
+}
+
+.modalbox{
+  width:min(500px,92vw);
+  max-height:90vh;
+  overflow:auto;
+  background:#191d26;
+  border:1px solid #343946;
+  border-radius:16px;
+  padding:20px;
+}
+
+.memberpick{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  margin:7px 0;
+}
+
+.memberpick input{
+  width:auto;
+}
+
+/* =========================
+   TOAST
+========================= */
+
+.toast{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  background:#262b37;
+  padding:12px 15px;
+  border-radius:10px;
+  box-shadow:0 10px 30px #0008;
+  z-index:30;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media(max-width:900px){
+
+  #app{
+    grid-template-columns:190px 1fr;
+  }
+
+  .right{
+    display:none;
+  }
+
+}
+
+@media(max-width:650px){
+
+  #app{
+    grid-template-columns:1fr;
+  }
+
+  .sidebar{
+    display:none;
+  }
+
+  .chat-layout{
+    grid-template-columns:1fr;
+  }
+
+  .chat-list{
+    display:none;
+  }
+
+  .topbar{
+    height:54px;
+  }
+
+  .content{
+    padding:15px;
+    height:calc(100vh - 54px);
+  }
+
+}
+</style>
+</head>
+
+<body>
+
+<!-- =====================================================
+     AUTH
+===================================================== -->
+
+<div id="auth">
+
+  <div class="card">
+
+    <div class="logo">
+      Sta<span>cord</span>
+    </div>
+
+    <div class="muted">
+      IDでつながる、Stacord。
+    </div>
+
+    <div class="tabs">
+
+      <button
+        type="button"
+        id="loginTab"
+        class="active"
+        onclick="switchAuthMode(false)"
+      >
+        ログイン
+      </button>
+
+      <button
+        type="button"
+        id="registerTab"
+        onclick="switchAuthMode(true)"
+      >
+        新規登録
+      </button>
+
+    </div>
+
+    <form id="authForm">
+
+      <div class="field">
+
+        <label>
+          Stacord ID
+        </label>
+
+        <input
+          id="authId"
+          required
+          minlength="3"
+          maxlength="20"
+          autocomplete="username"
+          placeholder="例: star_user"
+        >
+
+      </div>
+
+      <div class="field">
+
+        <label>
+          パスワード
+        </label>
+
+        <input
+          id="authPw"
+          type="password"
+          required
+          minlength="6"
+          autocomplete="current-password"
+          placeholder="6文字以上"
+        >
+
+      </div>
+
+      <div
+        id="displayWrap"
+        class="field hidden"
+      >
+
+        <label>
+          表示名
+        </label>
+
+        <input
+          id="displayName"
+          maxlength="30"
+          placeholder="画面に表示する名前"
+        >
+
+      </div>
+
+      <button
+        type="submit"
+        class="primary"
+        id="authBtn"
+      >
+        ログイン
+      </button>
+
+      <div
+        id="authError"
+        class="error"
+      ></div>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     APP
+===================================================== -->
+
+<div
+  id="app"
+  class="hidden"
+>
+
+  <aside class="sidebar">
+
+    <div class="brand">
+      Sta<b>cord</b>
+    </div>
+
+    <div class="nav">
+
+      <button
+        data-section="home"
+        class="active"
+      >
+        ⌂ ホーム
+      </button>
+
+      <button data-section="friends">
+        ♙ フレンド
+      </button>
+
+      <button data-section="requests">
+        ✉ 申請
+      </button>
+
+      <button data-section="chats">
+        ▣ チャット
+      </button>
+
+    </div>
+
+    <div class="userbox">
+
+      <div class="userrow">
+
+        <div class="usertext">
+
+          <div
+            class="avatar"
+            id="myAvatar"
+          >
+            S
+          </div>
+
+          <div>
+
+            <b id="myName">-</b>
+
+            <div
+              class="muted"
+              id="myId"
+            >
+              @-
+            </div>
+
+          </div>
+
+        </div>
+
+        <button
+          class="logout"
+          id="logout"
+          title="ログアウト"
+        >
+          ↪
+        </button>
+
+      </div>
+
+      <button
+        class="account-switch"
+        onclick="openAccountSwitcher()"
+      >
+        アカウント切替
+      </button>
+
+    </div>
+
+  </aside>
+
+
+  <main class="main">
+
+    <div
+      class="topbar"
+      id="topTitle"
+    >
+      ホーム
+    </div>
+
+    <div class="content">
+
+      <!-- HOME -->
+
+      <section
+        id="home"
+        class="section active"
+      >
+
+        <h2>
+          Stacordへようこそ
+        </h2>
+
+        <div class="item">
+
+          <h3>
+            友達を追加
+          </h3>
+
+          <p>
+            Stacord IDを入力してフレンド申請を送れます。
+          </p>
+
+          <button
+            class="primarybtn"
+            onclick="
+              showSection('friends');
+              setTimeout(
+                ()=>document.getElementById('friendId').focus(),
+                50
+              )
+            "
+          >
+            IDで検索
+          </button>
+
+        </div>
+
+      </section>
+
+
+      <!-- FRIENDS -->
+
+      <section
+        id="friends"
+        class="section"
+      >
+
+        <h2>
+          フレンド
+        </h2>
+
+        <div
+          class="item"
+          style="margin-bottom:15px"
+        >
+
+          <input
+            class="search"
+            id="friendId"
+            placeholder="相手のStacord ID"
+          >
+
+          <button
+            class="primarybtn"
+            onclick="sendRequest()"
+          >
+            フレンド申請を送る
+          </button>
+
+          <div
+            class="error"
+            id="friendError"
+          ></div>
+
+        </div>
+
+        <div
+          id="friendsList"
+          class="grid"
+        ></div>
+
+      </section>
+
+
+      <!-- REQUESTS -->
+
+      <section
+        id="requests"
+        class="section"
+      >
+
+        <h2>
+          フレンド申請
+        </h2>
+
+        <div
+          id="requestList"
+          class="grid"
+        ></div>
+
+      </section>
+
+
+      <!-- CHATS -->
+
+      <section
+        id="chats"
+        class="section"
+        style="padding:0;margin:-22px"
+      >
+
+        <div class="chat-layout">
+
+          <div
+            class="chat-list"
+            id="chatList"
+          ></div>
+
+          <div class="chat">
+
+            <div
+              class="chathead"
+              id="chatHead"
+            >
+              チャットを選択してください
+            </div>
+
+            <div
+              class="messages"
+              id="messages"
+            ></div>
+
+            <div class="composer">
+
+              <input
+                id="messageInput"
+                placeholder="メッセージ..."
+                disabled
+              >
+
+              <button
+                id="sendMsg"
+                disabled
+              >
+                送信
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+    </div>
+
+  </main>
+
+
+  <!-- RIGHT -->
+
+  <aside class="right">
+
+    <h3>
+      グループチャット
+    </h3>
+
+    <button
+      class="primary"
+      onclick="openGroupModal()"
+    >
+      ＋ グループを作成
+    </button>
+
+    <div id="groupList"></div>
+
+  </aside>
+
+</div>
+
+
+<!-- =====================================================
+     MODAL
+===================================================== -->
+
+<div
+  id="modal"
+  class="modal hidden"
+>
+
+  <div
+    class="modalbox"
+    id="modalBox"
+  ></div>
+
+</div>
+
+
+<!-- TOAST -->
+
+<div
+  id="toast"
+  class="toast hidden"
+></div>
+
+
+<script>
+
+/* =====================================================
+   設定
+===================================================== */
+
+const SUPABASE_URL =
+  "https://ftmsywsapyxoakiezhjl.supabase.co";
+
+const SUPABASE_ANON_KEY =
+  "sb_publishable_0rswfUUX0fN26G1Z7uWe9Q_aeCAaeS9";
+
+const AUTH_FUNCTION =
+  "https://ftmsywsapyxoakiezhjl.supabase.co/functions/v1/smart-service";
+
+
+const API_FUNCTION =
+  "https://ftmsywsapyxoakiezhjl.supabase.co/functions/v1/smooth-worker";
+
+
+/* =====================================================
+   STATE
+===================================================== */
+
+let sessionToken = null;
+let account = null;
+let currentConversation = null;
+
+let conversationsCache = [];
+let profilesCache = {};
+
+let syncTimer = null;
+let messageTimer = null;
+
+let registerMode = false;
+
+
+/* =====================================================
+   DOM
+===================================================== */
+
+const $ = id =>
+  document.getElementById(id);
+
+
+/* =====================================================
+   SAFE
+===================================================== */
+
+function safe(value){
+
+  return String(value ?? "")
+    .replace(
+      /[&<>"']/g,
+      m => ({
+        "&":"&amp;",
+        "<":"&lt;",
+        ">":"&gt;",
+        '"':"&quot;",
+        "'":"&#39;"
+      }[m])
+    );
+
+}
+
+
+/* =====================================================
+   TOAST
+===================================================== */
+
+let toastTimer = null;
+
+function toast(message){
+
+  $("toast").textContent =
+    message;
+
+  $("toast")
+    .classList
+    .remove("hidden");
+
+  clearTimeout(toastTimer);
+
+  toastTimer =
+    setTimeout(
+      () =>
+        $("toast")
+          .classList
+          .add("hidden"),
+      2600
+    );
+
+}
+
+
+/* =====================================================
+   LOCAL STORAGE
+===================================================== */
+
+const TOKEN_KEY =
+  "stacord_session_token";
+
+const ACCOUNTS_KEY =
+  "stacord_saved_accounts";
+
+
+function getSavedAccounts(){
+
+  try{
+
+    const data =
+      JSON.parse(
+        localStorage.getItem(
+          ACCOUNTS_KEY
+        ) || "[]"
+      );
+
+    return Array.isArray(data)
+      ? data
+      : [];
+
+  }catch{
+
+    return [];
+
+  }
+
+}
+
+
+function saveAccountShortcut(acc){
+
+  if(!acc?.user_id)
+    return;
+
+  const list =
+    getSavedAccounts()
+      .filter(
+        x =>
+          x.user_id !==
+          acc.user_id
+      );
+
+  list.unshift({
+    user_id:
+      acc.user_id,
+
+    display_name:
+      acc.display_name ||
+      acc.user_id
+  });
+
+  localStorage.setItem(
+    ACCOUNTS_KEY,
+    JSON.stringify(
+      list.slice(0,10)
+    )
+  );
+
+}
+
+
+function removeCurrentShortcut(){
+
+  if(!account?.user_id)
+    return;
+
+  const list =
+    getSavedAccounts()
+      .filter(
+        x =>
+          x.user_id !==
+          account.user_id
+      );
+
+  localStorage.setItem(
+    ACCOUNTS_KEY,
+    JSON.stringify(list)
+  );
+
+}
+
+
+/* =====================================================
+   AUTH MODE
+===================================================== */
+
+function switchAuthMode(register){
+
+  registerMode =
+    !!register;
+
+  $("loginTab")
+    .classList
+    .toggle(
+      "active",
+      !registerMode
+    );
+
+  $("registerTab")
+    .classList
+    .toggle(
+      "active",
+      registerMode
+    );
+
+  $("displayWrap")
+    .classList
+    .toggle(
+      "hidden",
+      !registerMode
+    );
+
+  $("authBtn").textContent =
+    registerMode
+      ? "アカウントを作成"
+      : "ログイン";
+
+  $("authPw").autocomplete =
+    registerMode
+      ? "new-password"
+      : "current-password";
+
+  $("authError").textContent =
+    "";
+
+}
+
+
+/* =====================================================
+   ID CHECK
+===================================================== */
+
+function validId(id){
+
+  return /^[A-Za-z0-9_]{3,20}$/
+    .test(id);
+
+}
+
+
+/* =====================================================
+   API REQUEST
+===================================================== */
+
+async function api(
+  action,
+  data = {}
+){
+
+  if(!sessionToken){
+
+    throw new Error(
+      "ログインしてください。"
+    );
+
+  }
+
+  const response =
+    await fetch(
+      API_FUNCTION,
+      {
+        method:"POST",
+
+        headers:{
+          "Content-Type":
+            "application/json",
+
+          "Authorization":
+            "Bearer " +
+            sessionToken,
+
+          "apikey":
+            SUPABASE_ANON_KEY
+        },
+
+        body:
+          JSON.stringify({
+            action,
+            ...data
+          })
+      }
+    );
+
+
+  let result = null;
+
+  try{
+
+    result =
+      await response.json();
+
+  }catch{
+
+    result = {};
+
+  }
+
+
+  if(!response.ok){
+
+    throw new Error(
+      result?.error ||
+      "APIエラーが発生しました。"
+    );
+
+  }
+
+
+  return result;
+
+}
+
+
+/* =====================================================
+   AUTH API
+===================================================== */
+
+async function authApi(action, data = {}) {
+  try {
+    const response = await fetch(AUTH_FUNCTION, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        action,
+        ...data
+      })
+    });
+
+    const text = await response.text();
+
+    let result;
+
+    try {
+      result = JSON.parse(text);
+    } catch {
+      throw new Error(
+        "サーバーから不正な応答が返されました。\n" +
+        "HTTP " + response.status + "\n\n" +
+        text
+      );
+    }
+
+    // 401、400、409など
+    // サーバーから返されたエラーをそのまま表示
+    if (!response.ok) {
+      throw new Error(
+        result.error ||
+        "認証エラー（HTTP " +
+        response.status +
+        "）"
+      );
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error("Stacord Auth:", error);
+
+    // fetchそのものが失敗した場合
+    if (
+      error instanceof TypeError &&
+      error.message.toLowerCase().includes("fetch")
+    ) {
+      throw new Error(
+        "Stacord Authに接続できませんでした。\n\n" +
+        "URL:\n" +
+        AUTH_FUNCTION
+      );
+    }
+
+    // 認証エラーなど
+    throw error;
+  }
+}
+
+
+/* =====================================================
+   AUTH FORM
+===================================================== */
+
+$("authForm")
+  .addEventListener(
+    "submit",
+    async event => {
+
+      event.preventDefault();
+
+      $("authError").textContent =
+        "";
+
+      const id =
+        $("authId")
+          .value
+          .trim()
+          .toLowerCase();
+
+      const pw =
+        $("authPw").value;
+
+      const display =
+        $("displayName")
+          .value
+          .trim() ||
+        id;
+
+
+      if(!validId(id)){
+
+        $("authError").textContent =
+          "IDは英数字と _ の3〜20文字で入力してください。";
+
+        return;
+
+      }
+
+
+      if(pw.length < 6){
+
+        $("authError").textContent =
+          "パスワードは6文字以上にしてください。";
+
+        return;
+
+      }
+
+
+      $("authBtn").disabled =
+        true;
+
+
+      $("authBtn").textContent =
+        registerMode
+          ? "登録中..."
+          : "ログイン中...";
+
+
+      try{
+
+        let result;
+
+
+        if(registerMode){
+
+          result =
+            await authApi(
+              "register",
+              {
+                user_id:id,
+                display_name:display,
+                password:pw
+              }
+            );
+
+        }else{
+
+          result =
+            await authApi(
+              "login",
+              {
+                user_id:id,
+                password:pw
+              }
+            );
+
+        }
+
+
+        /*
+          stacord-authの実装差に対応
+        */
+
+        const token =
+          result?.session_token ||
+          result?.token ||
+          result?.access_token;
+
+
+        const acc =
+          result?.account ||
+          result?.user ||
+          {
+            user_id:id,
+            display_name:
+              display
+          };
+
+
+        if(!token){
+
+          throw new Error(
+            "認証APIからセッションが返されませんでした。stacord-authのregister/loginがsession_tokenを返す設定か確認してください。"
+          );
+
+        }
+
+
+        sessionToken =
+          token;
+
+        account =
+          acc;
+
+
+        localStorage.setItem(
+          TOKEN_KEY,
+          sessionToken
+        );
+
+
+        saveAccountShortcut(
+          account
+        );
+
+
+        $("authId").value =
+          "";
+
+        $("authPw").value =
+          "";
+
+        $("displayName").value =
+          "";
+
+
+        await startApp();
+
+
+        toast(
+          registerMode
+            ? "アカウントを作成しました"
+            : "ログインしました"
+        );
+
+
+      }catch(error){
+
+        console.error(error);
+
+        $("authError").textContent =
+          error?.message ||
+          "認証に失敗しました。";
+
+      }finally{
+
+        $("authBtn").disabled =
+          false;
+
+        $("authBtn").textContent =
+          registerMode
+            ? "アカウントを作成"
+            : "ログイン";
+
+      }
+
+    }
+  );
+
+
+/* =====================================================
+   START APP
+===================================================== */
+
+async function startApp(){
+
+  if(!sessionToken)
+    return;
+
+
+  try{
+
+    const result =
+      await api("me");
+
+
+    if(result.account){
+
+      account =
+        result.account;
+
+    }
+
+
+  }catch(error){
+
+    console.error(error);
+
+    logoutLocal();
+
+    $("authError").textContent =
+      error.message;
+
+    return;
+
+  }
+
+
+  $("auth")
+    .classList
+    .add("hidden");
+
+  $("app")
+    .classList
+    .remove("hidden");
+
+
+  updateUserUI();
+
+
+  await refreshAll();
+
+
+  startSync();
+
+}
+
+
+/* =====================================================
+   USER UI
+===================================================== */
+
+function updateUserUI(){
+
+  if(!account)
+    return;
+
+  const name =
+    account.display_name ||
+    account.user_id ||
+    "Stacord";
+
+  $("myName").textContent =
+    name;
+
+  $("myId").textContent =
+    "@" +
+    account.user_id;
+
+  $("myAvatar").textContent =
+    name
+      .charAt(0)
+      .toUpperCase();
+
+}
+
+
+/* =====================================================
+   LOGOUT
+===================================================== */
+
+$("logout").onclick =
+  () => {
+
+    if(
+      !confirm(
+        "ログアウトしますか？"
+      )
+    ){
+
+      return;
+
+    }
+
+    logoutLocal();
+
+  };
+
+
+function logoutLocal(){
+
+  stopSync();
+
+  sessionToken =
+    null;
+
+  account =
+    null;
+
+  currentConversation =
+    null;
+
+  conversationsCache =
+    [];
+
+  localStorage.removeItem(
+    TOKEN_KEY
+  );
+
+  $("app")
+    .classList
+    .add("hidden");
+
+  $("auth")
+    .classList
+    .remove("hidden");
+
+  $("messages").innerHTML =
+    "";
+
+  $("chatHead").textContent =
+    "チャットを選択してください";
+
+  $("messageInput").value =
+    "";
+
+  $("messageInput").disabled =
+    true;
+
+  $("sendMsg").disabled =
+    true;
+
+}
+
+
+/* =====================================================
+   ACCOUNT SWITCHER
+===================================================== */
+
+function openAccountSwitcher(){
+
+  const accounts =
+    getSavedAccounts();
+
+
+  let html = `
+
+<h3>
+  アカウント切替
+</h3>
+
+<div class="muted">
+  このブラウザに保存されているStacordアカウント
+</div>
+
+`;
+
+
+  if(!accounts.length){
+
+    html += `
+
+<div
+  class="muted"
+  style="margin:15px 0"
+>
+  保存されているアカウントはありません。
+</div>
+
+`;
+
+  }else{
+
+    html += accounts
+      .map(
+        acc => `
+
+<div
+  class="item"
+  style="margin-top:10px"
+>
+
+  <b>
+    ${safe(acc.display_name)}
+  </b>
+
+  <div class="muted">
+    @${safe(acc.user_id)}
+  </div>
+
+  <button
+    class="primarybtn"
+    onclick="switchAccount('${safe(acc.user_id)}')"
+  >
+    このアカウントへ切替
+  </button>
+
+</div>
+
+`
+      )
+      .join("");
+
+  }
+
+
+  html += `
+
+<button
+  class="primary"
+  onclick="logoutForAccountSwitch()"
+>
+  別のアカウントでログイン
+</button>
+
+<button
+  style="
+    width:100%;
+    margin-top:8px;
+    padding:10px;
+    border-radius:10px;
+    background:#292f3b;
+    color:#fff;
+  "
+  onclick="closeModal()"
+>
+  閉じる
+</button>
+
+`;
+
+
+  $("modalBox").innerHTML =
+    html;
+
+  $("modal")
+    .classList
+    .remove("hidden");
+
+}
+
+
+function logoutForAccountSwitch(){
+
+  closeModal();
+
+  logoutLocal();
+
+  toast(
+    "別のアカウントでログインできます"
+  );
+
+}
+
+
+async function switchAccount(userId){
+
+  /*
+    セッション方式では
+    パスワードを保存しないため、
+    保存済みアカウントを
+    自動ログインすることはしない。
+  */
+
+  closeModal();
+
+  logoutLocal();
+
+  switchAuthMode(false);
+
+  $("authId").value =
+    userId;
+
+  $("authPw").focus();
+
+  toast(
+    "パスワードを入力してください"
+  );
+
+}
+
+
+/* =====================================================
+   SECTION
+===================================================== */
+
+function showSection(id){
+
+  document
+    .querySelectorAll(".section")
+    .forEach(
+      section =>
+        section.classList.remove(
+          "active"
+        )
+    );
+
+
+  const target =
+    $(id);
+
+  if(!target)
+    return;
+
+
+  target.classList.add(
+    "active"
+  );
+
+
+  document
+    .querySelectorAll(".nav button")
+    .forEach(
+      button =>
+        button.classList.toggle(
+          "active",
+          button.dataset.section ===
+            id
+        )
+    );
+
+
+  const titles = {
+
+    home:"ホーム",
+    friends:"フレンド",
+    requests:"フレンド申請",
+    chats:"チャット"
+
+  };
+
+
+  $("topTitle").textContent =
+    titles[id] || id;
+
+
+  if(id === "friends")
+    loadFriends();
+
+  if(id === "requests")
+    loadRequests();
+
+  if(id === "chats")
+    loadConversations();
+
+}
+
+
+document
+  .querySelectorAll(".nav button")
+  .forEach(
+    button => {
+
+      button.onclick =
+        () =>
+          showSection(
+            button.dataset.section
+          );
+
+    }
+  );
+
+
+/* =====================================================
+   SEND FRIEND REQUEST
+===================================================== */
+
+async function sendRequest(){
+
+  $("friendError").textContent =
+    "";
+
+  const id =
+    $("friendId")
+      .value
+      .trim()
+      .toLowerCase();
+
+
+  if(!id){
+
+    $("friendError").textContent =
+      "Stacord IDを入力してください。";
+
+    return;
+
+  }
+
+
+  if(
+    id ===
+    String(account.user_id)
+      .toLowerCase()
+  ){
+
+    $("friendError").textContent =
+      "自分には申請できません。";
+
+    return;
+
+  }
+
+
+  try{
+
+    const result =
+      await api(
+        "find_account",
+        {
+          user_id:id
+        }
+      );
+
+
+    if(!result.account){
+
+      $("friendError").textContent =
+        "そのStacord IDは見つかりません。";
+
+      return;
+
+    }
+
+
+    await api(
+      "send_request",
+      {
+        target_id:
+          result.account.id
+      }
+    );
+
+
+    $("friendId").value =
+      "";
+
+    toast(
+      "フレンド申請を送りました"
+    );
+
+
+  }catch(error){
+
+    $("friendError").textContent =
+      error.message;
+
+  }
+
+}
+
+
+/* =====================================================
+   FRIENDS
+===================================================== */
+
+async function loadFriends(){
+
+  if(!sessionToken)
+    return;
+
+
+  try{
+
+    const result =
+      await api("friends");
+
+
+    const friends =
+      result.friends ||
+      [];
+
+
+    $("friendsList").innerHTML =
+      friends.length
+        ? friends
+            .map(
+              friend => `
+
+<div class="item">
+
+  <h3>
+    ${safe(
+      friend.display_name ||
+      friend.user_id
+    )}
+  </h3>
+
+  <p>
+    @${safe(friend.user_id)}
+  </p>
+
+  <button
+    class="primarybtn"
+    onclick="startDM('${friend.id}')"
+  >
+    チャット
+  </button>
+
+  <button
+    onclick="blockUser('${friend.id}')"
+  >
+    ブロック
+  </button>
+
+  <button
+    class="dangerbtn"
+    onclick="removeFriend('${friend.id}')"
+  >
+    フレンド削除
+  </button>
+
+</div>
+
+`
+            )
+            .join("")
+        : `
+
+<div class="muted">
+  まだフレンドはいません。
+</div>
+
+`;
+
+  }catch(error){
+
+    console.error(error);
+
+    $("friendsList").innerHTML =
+      `
+<div class="error">
+  ${safe(error.message)}
+</div>
+`;
+
+  }
+
+}
+
+
+/* =====================================================
+   REQUESTS
+===================================================== */
+
+async function loadRequests(){
+
+  if(!sessionToken)
+    return;
+
+
+  try{
+
+    const result =
+      await api("requests");
+
+
+    const requests =
+      result.requests ||
+      [];
+
+
+    $("requestList").innerHTML =
+      requests.length
+        ? requests
+            .map(
+              request => {
+
+                const sender =
+                  Array.isArray(
+                    request.stacord_accounts
+                  )
+                    ? request
+                        .stacord_accounts[0]
+                    : request
+                        .stacord_accounts;
+
+
+                return `
+
+<div class="item">
+
+  <h3>
+    ${safe(
+      sender?.display_name ||
+      sender?.user_id ||
+      "Unknown"
+    )}
+  </h3>
+
+  <p>
+    @${safe(
+      sender?.user_id ||
+      ""
+    )}
+  </p>
+
+  <button
+    class="primarybtn"
+    onclick="acceptRequest('${request.id}')"
+  >
+    承認
+  </button>
+
+  <button
+    onclick="rejectRequest('${request.id}')"
+  >
+    拒否
+  </button>
+
+</div>
+
+`;
+
+              }
+            )
+            .join("")
+        : `
+
+<div class="muted">
+  新しい申請はありません。
+</div>
+
+`;
+
+  }catch(error){
+
+    console.error(error);
+
+  }
+
+}
+
+
+/* =====================================================
+   ACCEPT
+===================================================== */
+
+async function acceptRequest(id){
+
+  try{
+
+    await api(
+      "accept_request",
+      {
+        request_id:id
+      }
+    );
+
+
+    toast(
+      "フレンドに追加しました"
+    );
+
+
+    await loadRequests();
+    await loadFriends();
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   REJECT
+===================================================== */
+
+async function rejectRequest(id){
+
+  try{
+
+    await api(
+      "reject_request",
+      {
+        request_id:id
+      }
+    );
+
+
+    await loadRequests();
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   REMOVE FRIEND
+===================================================== */
+
+async function removeFriend(id){
+
+  if(
+    !confirm(
+      "このユーザーをフレンドから削除しますか？"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  try{
+
+    await api(
+      "remove_friend",
+      {
+        account_id:id
+      }
+    );
+
+
+    toast(
+      "フレンドから削除しました"
+    );
+
+
+    await loadFriends();
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   BLOCK
+===================================================== */
+
+async function blockUser(id){
+
+  if(
+    !confirm(
+      "このユーザーをブロックしますか？"
+    )
+  ){
+
+    return;
+
+  }
+
+
+  try{
+
+    await api(
+      "block",
+      {
+        account_id:id
+      }
+    );
+
+
+    toast(
+      "ブロックしました"
+    );
+
+
+    await loadFriends();
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   DM
+===================================================== */
+
+async function startDM(id){
+
+  try{
+
+    const result =
+      await api(
+        "create_dm",
+        {
+          account_id:id
+        }
+      );
+
+
+    const conversation =
+      result.conversation;
+
+
+    currentConversation =
+      conversation.id;
+
+
+    showSection("chats");
+
+    await loadConversations();
+
+    await selectConversation(
+      conversation.id
+    );
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   CONVERSATIONS
+===================================================== */
+
+async function loadConversations(){
+
+  if(!sessionToken)
+    return;
+
+
+  try{
+
+    const result =
+      await api(
+        "conversations"
+      );
+
+
+    conversationsCache =
+      result.conversations ||
+      [];
+
+
+    const html =
+      [];
+
+
+    for(
+      const conversation
+      of conversationsCache
+    ){
+
+      let name =
+        conversation.name ||
+        (
+          conversation.type ===
+          "group"
+            ? "グループ"
+            : "DM"
+        );
+
+
+      /*
+        DMの場合は会話メンバーから
+        相手を取得するAPIが現在ないため、
+        名前はDMとして表示。
+      */
+
+      html.push(`
+
+<div
+  class="chatitem ${
+    currentConversation ===
+    conversation.id
+      ? "sel"
+      : ""
+  }"
+  onclick="
+    selectConversation(
+      '${conversation.id}'
+    )
+  "
+>
+
+  <div class="chatname">
+    ${safe(name)}
+  </div>
+
+  <div class="chatpreview">
+    ${
+      conversation.type ===
+      "group"
+        ? "グループ"
+        : "ダイレクトメッセージ"
+    }
+  </div>
+
+</div>
+
+`);
+
+    }
+
+
+    $("chatList").innerHTML =
+      html.length
+        ? html.join("")
+        : `
+
+<div
+  class="muted"
+  style="padding:12px"
+>
+  まだチャットはありません。
+</div>
+
+`;
+
+
+  }catch(error){
+
+    console.error(error);
+
+  }
+
+}
+
+
+/* =====================================================
+   SELECT CHAT
+===================================================== */
+
+async function selectConversation(id){
+
+  currentConversation =
+    id;
+
+
+  await loadConversations();
+
+
+  const conversation =
+    conversationsCache
+      .find(
+        x =>
+          x.id === id
+      );
+
+
+  if(!conversation)
+    return;
+
+
+  $("chatHead").textContent =
+    conversation.name ||
+    (
+      conversation.type ===
+      "group"
+        ? "グループ"
+        : "DM"
+    );
+
+
+  $("messageInput").disabled =
+    false;
+
+  $("sendMsg").disabled =
+    false;
+
+
+  await loadMessages();
+
+
+  startMessageSync();
+
+}
+
+
+/* =====================================================
+   MESSAGES
+===================================================== */
+
+async function loadMessages(){
+
+  if(
+    !sessionToken ||
+    !currentConversation
+  ){
+
+    return;
+
+  }
+
+
+  /*
+    入力欄の値は絶対に変更しない。
+    同期時にチャット相手や入力内容が
+    リセットされないようにする。
+  */
+
+  try{
+
+    const result =
+      await api(
+        "messages",
+        {
+          conversation_id:
+            currentConversation
+        }
+      );
+
+
+    const messages =
+      result.messages ||
+      [];
+
+
+    const oldScroll =
+      $("messages").scrollTop;
+
+    const wasBottom =
+      $("messages").scrollHeight -
+      $("messages").scrollTop -
+      $("messages").clientHeight <
+      80;
+
+
+    $("messages").innerHTML =
+      messages
+        .map(
+          message => `
+
+<div
+  class="msg ${
+    message.sender_id ===
+    account.id
+      ? "mine"
+      : ""
+  }"
+>
+
+  ${safe(message.body)}
+
+  <small>
+    ${
+      message.sender_id ===
+      account.id
+        ? "自分"
+        : "相手"
+    }
+  </small>
+
+</div>
+
+`
+        )
+        .join("");
+
+
+    if(wasBottom){
+
+      $("messages").scrollTop =
+        $("messages").scrollHeight;
+
+    }else{
+
+      $("messages").scrollTop =
+        oldScroll;
+
+    }
+
+
+  }catch(error){
+
+    console.error(error);
+
+  }
+
+}
+
+
+/* =====================================================
+   SEND MESSAGE
+===================================================== */
+
+async function sendMessage(){
+
+  if(
+    !currentConversation ||
+    !sessionToken
+  ){
+
+    return;
+
+  }
+
+
+  const input =
+    $("messageInput");
+
+
+  const value =
+    input.value.trim();
+
+
+  if(!value)
+    return;
+
+
+  /*
+    送信前に値を保存。
+    APIエラーでも入力内容を消さない。
+  */
+
+  const original =
+    input.value;
+
+
+  try{
+
+    input.disabled =
+      true;
+
+
+    await api(
+      "send_message",
+      {
+        conversation_id:
+          currentConversation,
+
+        body:
+          value
+      }
+    );
+
+
+    /*
+      送信成功時だけ入力欄を空にする。
+    */
+
+    input.value =
+      "";
+
+
+    await loadMessages();
+
+
+  }catch(error){
+
+    input.value =
+      original;
+
+    toast(
+      error.message
+    );
+
+  }finally{
+
+    input.disabled =
+      false;
+
+    input.focus();
+
+  }
+
+}
+
+
+$("sendMsg")
+  .onclick =
+    sendMessage;
+
+
+$("messageInput")
+  .onkeydown =
+    event => {
+
+      if(
+        event.key ===
+          "Enter" &&
+        !event.shiftKey
+      ){
+
+        event.preventDefault();
+
+        sendMessage();
+
+      }
+
+    };
+
+
+/* =====================================================
+   GROUPS
+===================================================== */
+
+async function loadGroups(){
+
+  if(!sessionToken)
+    return;
+
+
+  try{
+
+    const result =
+      await api(
+        "groups"
+      );
+
+
+    const groups =
+      result.groups ||
+      [];
+
+
+    $("groupList").innerHTML =
+      groups.length
+        ? groups
+            .map(
+              group => `
+
+<div class="listrow">
+
+  <span>
+    ${safe(
+      group.name ||
+      "グループ"
+    )}
+  </span>
+
+  <button
+    onclick="
+      showSection('chats');
+      selectConversation(
+        '${group.id}'
+      )
+    "
+  >
+    開く
+  </button>
+
+</div>
+
+`
+            )
+            .join("")
+        : `
+
+<div
+  class="muted"
+  style="margin-top:12px"
+>
+  グループなし
+</div>
+
+`;
+
+  }catch(error){
+
+    console.error(error);
+
+  }
+
+}
+
+
+/* =====================================================
+   GROUP MODAL
+===================================================== */
+
+async function openGroupModal(){
+
+  try{
+
+    const result =
+      await api(
+        "friends"
+      );
+
+
+    const friends =
+      result.friends ||
+      [];
+
+
+    $("modalBox").innerHTML = `
+
+<h3>
+  グループを作成
+</h3>
+
+<div class="field">
+
+  <label>
+    グループ名
+  </label>
+
+  <input
+    id="groupName"
+    placeholder="例：Star Friends"
+    maxlength="100"
+  >
+
+</div>
+
+<div class="muted">
+  参加メンバーを選択
+</div>
+
+<div
+  style="margin-top:10px"
+>
+
+${
+  friends.length
+    ? friends
+        .map(
+          friend => `
+
+<label class="memberpick">
+
+  <input
+    type="checkbox"
+    value="${safe(friend.id)}"
+  >
+
+  <span>
+    ${safe(
+      friend.display_name ||
+      friend.user_id
+    )}
+  </span>
+
+  <span class="muted">
+    @${safe(friend.user_id)}
+  </span>
+
+</label>
+
+`
+        )
+        .join("")
+    : `
+
+<div
+  class="muted"
+  style="margin-top:10px"
+>
+  参加できるフレンドがいません。
+</div>
+
+`
+}
+
+</div>
+
+<button
+  class="primary"
+  onclick="createGroup()"
+>
+  作成
+</button>
+
+<button
+  style="
+    width:100%;
+    margin-top:8px;
+    padding:10px;
+    border-radius:10px;
+    background:#292f3b;
+    color:#fff;
+  "
+  onclick="closeModal()"
+>
+  キャンセル
+</button>
+
+`;
+
+
+    $("modal")
+      .classList
+      .remove("hidden");
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   CREATE GROUP
+===================================================== */
+
+async function createGroup(){
+
+  const name =
+    $("groupName")
+      .value
+      .trim() ||
+    "新しいグループ";
+
+
+  const selected =
+    [
+      ...$("modalBox")
+        .querySelectorAll(
+          'input[type="checkbox"]:checked'
+        )
+    ]
+      .map(
+        input =>
+          input.value
+      );
+
+
+  if(
+    selected.length <
+    1
+  ){
+
+    toast(
+      "少なくとも1人のフレンドを選択してください。"
+    );
+
+    return;
+
+  }
+
+
+  try{
+
+    const result =
+      await api(
+        "create_group",
+        {
+          name,
+          member_ids:
+            selected
+        }
+      );
+
+
+    closeModal();
+
+
+    await loadGroups();
+
+    await loadConversations();
+
+
+    showSection(
+      "chats"
+    );
+
+
+    if(
+      result.conversation
+    ){
+
+      await selectConversation(
+        result.conversation.id
+      );
+
+    }
+
+
+    toast(
+      "グループを作成しました"
+    );
+
+
+  }catch(error){
+
+    toast(
+      error.message
+    );
+
+  }
+
+}
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+function closeModal(){
+
+  $("modal")
+    .classList
+    .add("hidden");
+
+}
+
+
+$("modal").addEventListener(
+  "click",
+  event => {
+
+    if(
+      event.target ===
+      $("modal")
+    ){
+
+      closeModal();
+
+    }
+
+  }
+);
+
+
+/* =====================================================
+   REFRESH ALL
+===================================================== */
+
+async function refreshAll(){
+
+  if(!sessionToken)
+    return;
+
+
+  await Promise.all([
+    loadFriends(),
+    loadRequests(),
+    loadConversations(),
+    loadGroups()
+  ]);
+
+}
+
+
+/* =====================================================
+   SYNC
+===================================================== */
+
+function startSync(){
+
+  stopSync();
+
+
+  /*
+    2.5秒ごとにサーバー側の
+    データだけ確認する。
+
+    入力欄は変更しない。
+    現在のアカウントも変更しない。
+    選択中チャットも変更しない。
+  */
+
+  syncTimer =
+    setInterval(
+      async () => {
+
+        if(!sessionToken)
+          return;
+
+
+        try{
+
+          await Promise.all([
+            loadRequests(),
+            loadFriends(),
+            loadConversations(),
+            loadGroups()
+          ]);
+
+
+        }catch(error){
+
+          console.error(
+            "sync:",
+            error
+          );
+
+        }
+
+      },
+      2500
+    );
+
+
+  startMessageSync();
+
+}
+
+
+function startMessageSync(){
+
+  if(messageTimer){
+
+    clearInterval(
+      messageTimer
+    );
+
+    messageTimer =
+      null;
+
+  }
+
+
+  if(!currentConversation)
+    return;
+
+
+  /*
+    メッセージだけ同期。
+    messageInputには触れない。
+  */
+
+  messageTimer =
+    setInterval(
+      async () => {
+
+        if(
+          sessionToken &&
+          currentConversation
+        ){
+
+          await loadMessages();
+
+        }
+
+      },
+      2000
+    );
+
+}
+
+
+function stopSync(){
+
+  if(syncTimer){
+
+    clearInterval(
+      syncTimer
+    );
+
+    syncTimer =
+      null;
+
+  }
+
+
+  if(messageTimer){
+
+    clearInterval(
+      messageTimer
+    );
+
+    messageTimer =
+      null;
+
+  }
+
+}
+
+
+/* =====================================================
+   SESSION RESTORE
+===================================================== */
+
+async function restoreSession(){
+
+  const token =
+    localStorage.getItem(
+      TOKEN_KEY
+    );
+
+
+  if(!token){
+
+    return false;
+
+  }
+
+
+  sessionToken =
+    token;
+
+
+  try{
+
+    const result =
+      await api(
+        "me"
+      );
+
+
+    if(!result.account){
+
+      throw new Error(
+        "セッションが無効です。"
+      );
+
+    }
+
+
+    account =
+      result.account;
+
+
+    saveAccountShortcut(
+      account
+    );
+
+
+    await startApp();
+
+    return true;
+
+
+  }catch(error){
+
+    console.warn(
+      "session restore failed:",
+      error
+    );
+
+
+    localStorage.removeItem(
+      TOKEN_KEY
+    );
+
+
+    sessionToken =
+      null;
+
+    account =
+      null;
+
+
+    return false;
+
+  }
+
+}
+
+
+/* =====================================================
+   START
+===================================================== */
+
+(async function(){
+
+  try{
+
+    const restored =
+      await restoreSession();
+
+
+    if(restored)
+      return;
+
+
+    $("auth")
+      .classList
+      .remove("hidden");
+
+    $("app")
+      .classList
+      .add("hidden");
+
+
+  }catch(error){
+
+    console.error(error);
+
+    $("authError").textContent =
+      error.message ||
+      "Stacordを起動できませんでした。";
+
+  }
+
+})();
+
+</script>
+
+</body>
+</html>
