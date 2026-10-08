@@ -1101,15 +1101,22 @@ button{
           <input
             class="search"
             id="friendId"
-            placeholder="相手のStacord ID"
+            placeholder="username / Stacord ID"
+            autocomplete="off"
+            onkeydown="if(event.key === 'Enter'){ event.preventDefault(); searchFriendUser(); }"
           >
 
           <button
             class="primarybtn"
-            onclick="sendRequest()"
+            onclick="searchFriendUser()"
           >
-            フレンド申請を送る
+            ユーザーを検索
           </button>
+
+          <div
+            id="friendSearchResult"
+            style="margin-top:12px"
+          ></div>
 
           <div
             class="error"
@@ -2199,87 +2206,108 @@ document
    SEND FRIEND REQUEST
 ===================================================== */
 
-async function sendRequest(){
+async function searchFriendUser(){
 
-  $("friendError").textContent =
-    "";
+  $("friendError").textContent = "";
+  $("friendSearchResult").innerHTML = "";
 
-  const id =
-    $("friendId")
-      .value
-      .trim()
-      .toLowerCase();
-
+  const id = $("friendId").value.trim().toLowerCase();
 
   if(!id){
-
-    $("friendError").textContent =
-      "Stacord IDを入力してください。";
-
+    $("friendError").textContent = "username / Stacord IDを入力してください。";
     return;
-
   }
 
-
-  if(
-    id ===
-    String(account.user_id)
-      .toLowerCase()
-  ){
-
-    $("friendError").textContent =
-      "自分には申請できません。";
-
+  if(!account){
+    $("friendError").textContent = "ログインしてください。";
     return;
-
   }
 
+  if(id === String(account.user_id).toLowerCase()){
+    $("friendError").textContent = "自分は検索できません。";
+    return;
+  }
+
+  $("friendSearchResult").innerHTML = '<div class="item"><div class="muted">検索中...</div></div>';
 
   try{
+    const result = await api("find_account", { user_id:id });
+    const target = result?.account || result?.user || result?.data?.account || result?.data?.user || null;
 
-    const result =
-      await api(
-        "find_account",
-        {
-          user_id:id
-        }
-      );
-
-
-    if(!result.account){
-
-      $("friendError").textContent =
-        "そのStacord IDは見つかりません。";
-
+    if(!target){
+      $("friendSearchResult").innerHTML = "";
+      $("friendError").textContent = "そのusername / Stacord IDのユーザーは見つかりません。";
       return;
-
     }
 
+    const targetUserId = target.user_id || target.username || id;
+    const targetId = target.id || target.account_id || targetUserId;
 
-    await api(
-      "send_request",
-      {
-        target_id:
-          result.account.id
-      }
-    );
+    if(String(targetUserId).toLowerCase() === String(account.user_id).toLowerCase()){
+      $("friendSearchResult").innerHTML = "";
+      $("friendError").textContent = "自分は検索できません。";
+      return;
+    }
 
+    const name = target.display_name || target.username || targetUserId;
+    const safeTargetId = encodeURIComponent(String(targetId));
+    const safeTargetUserId = encodeURIComponent(String(targetUserId));
 
-    $("friendId").value =
-      "";
+    $("friendSearchResult").innerHTML = `
+      <div class="item">
+        <h3>${safe(name)}</h3>
+        <p>@${safe(targetUserId)}</p>
+        <button
+          class="primarybtn"
+          id="sendFriendResultButton"
+          data-target-id="${safeTargetId}"
+          data-target-user-id="${safeTargetUserId}"
+        >
+          ＋ フレンド申請
+        </button>
+      </div>
+    `;
 
-    toast(
-      "フレンド申請を送りました"
-    );
-
+    $("sendFriendResultButton").onclick = () =>
+      sendRequestToUser(
+        decodeURIComponent($("sendFriendResultButton").dataset.targetId),
+        decodeURIComponent($("sendFriendResultButton").dataset.targetUserId)
+      );
 
   }catch(error){
-
-    $("friendError").textContent =
-      error.message;
-
+    $("friendSearchResult").innerHTML = "";
+    $("friendError").textContent = error?.message || "ユーザー検索に失敗しました。";
   }
+}
 
+async function sendRequestToUser(targetId, targetUserId){
+
+  $("friendError").textContent = "";
+
+  try{
+    await api("send_request", {
+      target_id:targetId,
+      user_id:targetUserId
+    });
+
+    $("friendSearchResult").innerHTML = `
+      <div class="item">
+        <h3>申請を送りました</h3>
+        <p>@${safe(targetUserId)} にフレンド申請を送りました。</p>
+      </div>
+    `;
+
+    $("friendId").value = "";
+    toast("フレンド申請を送りました");
+    await loadRequests();
+
+  }catch(error){
+    $("friendError").textContent = error?.message || "フレンド申請に失敗しました。";
+  }
+}
+
+async function sendRequest(){
+  await searchFriendUser();
 }
 
 
