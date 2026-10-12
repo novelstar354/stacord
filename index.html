@@ -982,6 +982,10 @@ button{
         ▣ チャット
       </button>
 
+      <button data-section="admin" id="adminNav" class="hidden">
+        ⚙ 管理者
+      </button>
+
     </div>
 
     <div class="userbox">
@@ -1206,6 +1210,21 @@ button{
 
       </section>
 
+      <!-- ADMIN -->
+      <section id="admin" class="section" style="padding:0">
+        <h2>管理者パネル</h2>
+        <div class="item" style="margin-bottom:15px">
+          <p>アカウントの一覧、BAN、BAN解除を管理できます。</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+            <button class="primarybtn" onclick="loadAdminUsers()">全ユーザー</button>
+            <button onclick="loadAdminBans()">BAN一覧</button>
+          </div>
+          <input id="adminSearch" class="search" style="margin-top:12px" placeholder="ID・表示名で検索" oninput="filterAdminUsers()">
+          <div id="adminStatus" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div id="adminUsers" class="grid"></div>
+      </section>
+
     </div>
 
   </main>
@@ -1293,6 +1312,8 @@ let syncTimer = null;
 let messageTimer = null;
 
 let registerMode = false;
+let isAdmin = false;
+let adminUsersCache = [];
 
 
 /* =====================================================
@@ -1825,6 +1846,21 @@ async function startApp(){
 
     }
 
+    if(account?.is_banned){
+      const reason = account.ban_reason || "理由は指定されていません";
+      logoutLocal();
+      throw new Error("このアカウントはBANされています。\n理由: " + reason);
+    }
+
+    // 管理者パネルは管理者だけに表示
+    try{
+      const status = await api("admin_status");
+      isAdmin = status.is_admin === true;
+    }catch{
+      isAdmin = false;
+    }
+    $("adminNav").classList.toggle("hidden", !isAdmin);
+
 
   }catch(error){
 
@@ -1835,7 +1871,7 @@ async function startApp(){
     $("authError").textContent =
       error.message;
 
-    return;
+    throw error;
 
   }
 
@@ -1920,6 +1956,9 @@ function logoutLocal(){
 
   account =
     null;
+
+  isAdmin = false;
+  $("adminNav")?.classList.add("hidden");
 
   currentConversation =
     null;
@@ -2149,7 +2188,8 @@ function showSection(id){
     home:"ホーム",
     friends:"フレンド",
     requests:"フレンド申請",
-    chats:"チャット"
+    chats:"チャット",
+    admin:"管理者パネル"
 
   };
 
@@ -2166,6 +2206,9 @@ function showSection(id){
 
   if(id === "chats")
     loadConversations();
+
+  if(id === "admin" && isAdmin)
+    loadAdminUsers();
 
 }
 
@@ -3298,6 +3341,99 @@ $("modal").addEventListener(
 
   }
 );
+
+
+/* =====================================================
+   ADMIN PANEL
+===================================================== */
+
+async function loadAdminUsers(){
+  if(!isAdmin) return;
+  $("adminStatus").textContent = "ユーザー一覧を読み込み中...";
+  $("adminUsers").innerHTML = "";
+  try{
+    const result = await api("admin_users");
+    adminUsersCache = Array.isArray(result.users) ? result.users : [];
+    renderAdminUsers(adminUsersCache, false);
+    $("adminStatus").textContent = `全 ${adminUsersCache.length} アカウント`;
+  }catch(error){
+    $("adminStatus").textContent = error.message || "ユーザー一覧を取得できませんでした。";
+  }
+}
+
+async function loadAdminBans(){
+  if(!isAdmin) return;
+  $("adminStatus").textContent = "BAN一覧を読み込み中...";
+  $("adminUsers").innerHTML = "";
+  try{
+    const result = await api("admin_ban_list");
+    adminUsersCache = Array.isArray(result.users) ? result.users : [];
+    renderAdminUsers(adminUsersCache, true);
+    $("adminStatus").textContent = `BAN中: ${adminUsersCache.length} アカウント`;
+  }catch(error){
+    $("adminStatus").textContent = error.message || "BAN一覧を取得できませんでした。";
+  }
+}
+
+function filterAdminUsers(){
+  const query = ($("adminSearch")?.value || "").trim().toLowerCase();
+  const filtered = adminUsersCache.filter(user =>
+    String(user.user_id || "").toLowerCase().includes(query) ||
+    String(user.display_name || "").toLowerCase().includes(query)
+  );
+  renderAdminUsers(filtered, null);
+}
+
+function renderAdminUsers(users, forceBanned = null){
+  if(!isAdmin) return;
+  $("adminUsers").innerHTML = users.length ? users.map(user => {
+    const banned = forceBanned === true || user.is_banned === true;
+    const created = user.created_at ? new Date(user.created_at).toLocaleString("ja-JP") : "不明";
+    const banInfo = banned
+      ? `<p style="color:#ff8798">BAN理由: ${safe(user.ban_reason || "理由は指定されていません")}</p>
+         <p class="muted">BAN日時: ${safe(user.banned_at ? new Date(user.banned_at).toLocaleString("ja-JP") : "不明")}</p>`
+      : "";
+    const actionButton = user.id === account?.id
+      ? `<button disabled title="自分自身はBANできません">自分のアカウント</button>`
+      : banned
+        ? `<button class="primarybtn" onclick="unbanAccount('${safe(user.id)}')">BAN解除</button>`
+        : `<button class="dangerbtn" onclick="banAccount('${safe(user.id)}','${safe(user.user_id)}')">BAN</button>`;
+    return `<div class="item">
+      <h3>${safe(user.display_name || user.user_id || "名前なし")}</h3>
+      <p>@${safe(user.user_id || "")}</p>
+      <p class="muted">登録日時: ${safe(created)}</p>
+      <p style="color:${banned ? "#ff8798" : "#7ee7ad"}">${banned ? "BAN中" : "利用可能"}</p>
+      ${banInfo}
+      ${actionButton}
+    </div>`;
+  }).join("") : `<div class="muted">該当するユーザーはいません。</div>`;
+}
+
+async function banAccount(accountId, userId){
+  if(!isAdmin) return;
+  const reason = prompt(`@${userId} をBANする理由を入力してください:`, "");
+  if(reason === null) return;
+  if(!confirm(`@${userId} をBANしますか？\\n理由: ${reason.trim() || "理由は指定されていません"}`)) return;
+  try{
+    await api("admin_ban", {account_id:accountId, reason:reason.trim()});
+    toast(`@${userId} をBANしました`);
+    await loadAdminUsers();
+  }catch(error){
+    toast(error.message || "BANに失敗しました");
+  }
+}
+
+async function unbanAccount(accountId){
+  if(!isAdmin) return;
+  if(!confirm("このアカウントのBANを解除しますか？")) return;
+  try{
+    const result = await api("admin_unban", {account_id:accountId});
+    toast(`@${result.user?.user_id || "ユーザー"} のBANを解除しました`);
+    await loadAdminBans();
+  }catch(error){
+    toast(error.message || "BAN解除に失敗しました");
+  }
+}
 
 
 /* =====================================================
