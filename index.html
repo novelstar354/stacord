@@ -302,6 +302,20 @@ button{
   display:block;
 }
 
+.content:has(#chats.active){
+  overflow:hidden;
+}
+
+#chats.active{
+  height:100%;
+  min-height:0;
+}
+
+#chats.active .chat-layout{
+  height:100%;
+  min-height:0;
+}
+
 .section h2{
   margin:0 0 18px;
 }
@@ -370,14 +384,16 @@ button{
 ========================= */
 
 .chat-layout{
-  height:calc(100vh - 62px);
+  height:100%;
+  min-height:0;
   display:grid;
   grid-template-columns:280px 1fr;
 }
 
 .chat-list{
   border-right:1px solid #292e39;
-  overflow:auto;
+  overflow-y:auto;
+  overscroll-behavior:contain;
   padding:10px;
 }
 
@@ -410,18 +426,25 @@ button{
   display:flex;
   flex-direction:column;
   min-width:0;
+  min-height:0;
   height:100%;
 }
 
 .chathead{
+  flex:0 0 auto;
+  position:relative;
+  z-index:2;
+  background:#11131a;
   padding:15px 18px;
   border-bottom:1px solid #292e39;
   font-weight:700;
 }
 
 .messages{
-  flex:1;
-  overflow:auto;
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overscroll-behavior:contain;
   padding:18px;
   display:flex;
   flex-direction:column;
@@ -449,7 +472,40 @@ button{
   margin-top:4px;
 }
 
+
+.message-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  margin-top:5px;
+  opacity:.62;
+  transition:opacity .15s ease;
+}
+.msg:hover .message-actions,.msg:focus-within .message-actions{opacity:1}
+.message-actions button{
+  padding:2px 6px;
+  border-radius:5px;
+  background:transparent;
+  border:1px solid rgba(190,198,215,.18);
+  color:#c6ccda;
+  font-size:10px;
+  font-weight:400;
+}
+.message-actions button.danger{background:transparent;color:#c6a7ad;border-color:rgba(220,120,140,.2)}
+.message-actions button:hover{background:rgba(255,255,255,.08);color:#fff}
+.reply-preview{font-size:11px;color:#cbd1df;background:rgba(0,0,0,.16);border-left:2px solid #a9a0ff;padding:5px 7px;margin-bottom:6px;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.message-reactions{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.reaction-chip{font-size:12px;padding:2px 6px;border:1px solid rgba(190,198,215,.25);border-radius:12px;background:rgba(0,0,0,.14);color:#eef0f8;cursor:pointer}
+.reaction-chip.mine{border-color:#a99cff;background:rgba(126,104,255,.22)}
+.reaction-picker{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px}
+.reaction-picker[hidden]{display:none}
+.reaction-picker button{padding:2px 5px;border-radius:6px;background:transparent;border:1px solid rgba(190,198,215,.16);font-size:14px}
+.replying-banner{display:none;padding:6px 12px;border-top:1px solid #292e39;background:rgba(126,104,255,.08);font-size:12px;color:#d8d3ff;align-items:center;justify-content:space-between;gap:8px}
+.replying-banner.active{display:flex}
+.replying-banner button{background:transparent;color:#d8d3ff;padding:2px 6px}
+
 .composer{
+  flex:0 0 auto;
   display:flex;
   gap:8px;
   padding:12px;
@@ -631,6 +687,18 @@ button{
    ========================================= */
 
 @media (max-width: 700px) {
+
+  #chats.active .chat-layout{
+    height:100%;
+    min-height:0;
+  }
+  #chats.active .chat-list{
+    display:none;
+  }
+  #chats.active .chat{
+    flex:1 1 auto;
+    min-height:0;
+  }
 
   html,
   body {
@@ -831,6 +899,14 @@ button{
     min-height: calc(100vh - 90px);
   }
 }
+
+.notification-enable{
+  width:100%;margin-top:8px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:rgba(255,255,255,.06);color:inherit;cursor:pointer;
+}
+.notification-enable:hover{background:rgba(255,255,255,.11)}
+
 </style>
 </head>
 
@@ -1033,6 +1109,8 @@ button{
         アカウント切替
       </button>
 
+      <button type="button" id="enableNotifications" class="notification-enable" onclick="enableNotifications()">🔔 通知を有効にする</button>
+
     </div>
 
   </aside>
@@ -1187,6 +1265,11 @@ button{
               id="messages"
             ></div>
 
+            <div class="replying-banner" id="replyingBanner">
+              <span id="replyingText">返信先を選択中</span>
+              <button type="button" onclick="cancelReply()" aria-label="返信をキャンセル">×</button>
+            </div>
+
             <div class="composer">
 
               <input
@@ -1310,6 +1393,11 @@ let profilesCache = {};
 
 let syncTimer = null;
 let messageTimer = null;
+let replyingToMessage = null;
+let notificationTimer = null;
+let notificationInitialized = false;
+const seenNotificationMessageIds = new Set();
+const seenNotificationRequestIds = new Set();
 
 let registerMode = false;
 let isAdmin = false;
@@ -1824,6 +1912,146 @@ $("authForm")
 
 
 /* =====================================================
+   BROWSER NOTIFICATIONS
+===================================================== */
+
+function updateNotificationButton(){
+  const button = $("enableNotifications");
+  if(!button) return;
+  if(!('Notification' in window)){
+    button.textContent = "通知はこのブラウザーで利用できません";
+    button.disabled = true;
+    return;
+  }
+  if(Notification.permission === "granted"){
+    button.textContent = "🔔 通知は有効です";
+    button.disabled = false;
+  }else if(Notification.permission === "denied"){
+    button.textContent = "通知はブロック中（サイト設定を確認）";
+    button.disabled = false;
+  }else{
+    button.textContent = "🔔 通知を有効にする";
+    button.disabled = false;
+  }
+}
+
+async function enableNotifications(){
+  if(!('Notification' in window)){
+    toast("このブラウザーはデスクトップ通知に対応していません。");
+    updateNotificationButton();
+    return;
+  }
+  if(Notification.permission === "denied"){
+    toast("ブラウザーのサイト設定で通知を許可してください。");
+    updateNotificationButton();
+    return;
+  }
+  try{
+    const permission = Notification.permission === "granted"
+      ? "granted"
+      : await Notification.requestPermission();
+    updateNotificationButton();
+    if(permission !== "granted"){
+      toast("通知が許可されていません。");
+      return;
+    }
+    if(!notificationInitialized){
+      await checkNotifications(true);
+      notificationInitialized = true;
+    }
+    startNotificationSync();
+    toast("新着メッセージとフレンド申請の通知を有効にしました。");
+  }catch(error){
+    console.error("notification permission:", error);
+    toast("通知を有効にできませんでした。");
+  }
+}
+
+function showBrowserNotification(title, body, conversationId = null){
+  if(!('Notification' in window) || Notification.permission !== "granted") return;
+  // チャットを開いていてページも表示中なら、不要なデスクトップ通知は出さない
+  if(conversationId && currentConversation === conversationId && !document.hidden) return;
+  try{
+    const notice = new Notification(title, { body, tag: conversationId || title, renotify: false });
+    notice.onclick = () => {
+      window.focus();
+      notice.close();
+      if(conversationId){
+        showSection("chats");
+        selectConversation(conversationId);
+      }else{
+        showSection("requests");
+      }
+    };
+  }catch(error){ console.warn("Notification failed:", error); }
+}
+
+async function checkNotifications(silent = false){
+  if(!sessionToken || !account || !('Notification' in window) || Notification.permission !== "granted") return;
+  try{
+    const [conversationResult, requestResult] = await Promise.all([
+      api("conversations"),
+      api("requests")
+    ]);
+    const conversations = Array.isArray(conversationResult?.conversations) ? conversationResult.conversations : [];
+    const requests = Array.isArray(requestResult?.requests) ? requestResult.requests : [];
+
+    for(const request of requests){
+      const id = String(request.id || "");
+      if(!id) continue;
+      if(!seenNotificationRequestIds.has(id)){
+        seenNotificationRequestIds.add(id);
+        if(!silent){
+          const sender = Array.isArray(request.stacord_accounts) ? request.stacord_accounts[0] : request.stacord_accounts;
+          showBrowserNotification("Stacord · フレンド申請", `${sender?.display_name || sender?.user_id || "ユーザー"} から申請が届きました。`);
+          if(!document.hidden) toast("新しいフレンド申請が届きました。");
+        }
+      }
+    }
+
+    // 初回は既存のメッセージを通知せず、以降の新着だけ通知する
+    for(const conversation of conversations){
+      const result = await api("messages", { conversation_id: conversation.id });
+      const messages = Array.isArray(result?.messages) ? result.messages : [];
+      const otherMembers = (conversation.members || []).filter(member => member.id !== account.id);
+      const dmMember = otherMembers[0];
+      const conversationName = conversation.type === "group"
+        ? (conversation.name || "グループチャット")
+        : (dmMember?.display_name || dmMember?.user_id || "DM");
+      for(const message of messages){
+        const id = String(message.id || "");
+        if(!id) continue;
+        if(!seenNotificationMessageIds.has(id)){
+          seenNotificationMessageIds.add(id);
+          if(!silent && message.sender_id !== account.id){
+            const senderName = message.sender?.display_name || message.sender?.user_id || conversationName;
+            const body = String(message.body || "新しいメッセージ");
+            showBrowserNotification(`Stacord · ${senderName}`, body.slice(0, 180), conversation.id);
+            if(!document.hidden && currentConversation !== conversation.id){
+              toast(`${senderName} から新しいメッセージが届きました。`);
+            }
+          }
+        }
+      }
+    }
+  }catch(error){
+    console.error("notification check:", error);
+  }
+}
+
+function startNotificationSync(){
+  if(notificationTimer) clearInterval(notificationTimer);
+  if(!sessionToken || !('Notification' in window) || Notification.permission !== "granted") return;
+  notificationTimer = setInterval(() => checkNotifications(false), 12000);
+}
+
+function stopNotificationSync(){
+  if(notificationTimer){ clearInterval(notificationTimer); notificationTimer = null; }
+}
+
+updateNotificationButton();
+
+/* =====================================================
    START APP
 ===================================================== */
 
@@ -1892,6 +2120,14 @@ async function startApp(){
 
 
   startSync();
+  updateNotificationButton();
+  if('Notification' in window && Notification.permission === "granted"){
+    if(!notificationInitialized){
+      await checkNotifications(true);
+      notificationInitialized = true;
+    }
+    startNotificationSync();
+  }
 
 }
 
@@ -1950,6 +2186,10 @@ $("logout").onclick =
 function logoutLocal(){
 
   stopSync();
+  stopNotificationSync();
+  notificationInitialized = false;
+  seenNotificationMessageIds.clear();
+  seenNotificationRequestIds.clear();
 
   sessionToken =
     null;
@@ -2860,55 +3100,92 @@ async function selectConversation(id){
 ===================================================== */
 
 async function loadMessages(){
-
-  if(!sessionToken || !currentConversation){
-    return;
-  }
-
+  if(!sessionToken || !currentConversation) return;
   try{
-    const result = await api("messages", {
-      conversation_id: currentConversation
-    });
-
-    const messages = Array.isArray(result?.messages)
-      ? result.messages
-      : [];
-
+    const result = await api("messages", { conversation_id: currentConversation });
+    const messages = Array.isArray(result?.messages) ? result.messages : [];
     const box = $("messages");
     if(!box) return;
-
     const oldScroll = box.scrollTop;
-    const wasBottom =
-      box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-
-    box.innerHTML = messages.map(message => `
-      <div class="msg ${message.sender_id === account?.id ? "mine" : ""}">
-        ${safe(message.body)}
-        <small>
-          ${message.sender_id === account?.id ? "自分" : safe(message.sender?.display_name || "相手")}
-          · ${safe(formatMessageTime(message.created_at))}
-        </small>
-      </div>
-    `).join("");
-
-    if(wasBottom){
-      box.scrollTop = box.scrollHeight;
-    }else{
-      box.scrollTop = oldScroll;
-    }
-
+    const wasBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    box.innerHTML = messages.map(message => {
+      const mine = message.sender_id === account?.id;
+      const messageId = String(message.id || "");
+      const senderName = mine ? "自分" : (message.sender?.display_name || message.sender?.user_id || "相手");
+      const reply = message.reply_to || null;
+      const reactionList = Array.isArray(message.reactions) ? message.reactions : [];
+      const reactionButtons = reactionList.map(r => `<button type="button" class="reaction-chip ${r.mine ? "mine" : ""}" onclick="toggleReaction('${messageId}','${safeAttr(r.emoji)}')" title="${Number(r.count)||0}人がリアクション">${safe(r.emoji)} ${Number(r.count)||0}</button>`).join("");
+      return `
+        <div class="msg ${mine ? "mine" : ""}" data-message-id="${safeAttr(messageId)}">
+          ${reply ? `<div class="reply-preview">↪ ${safe(reply.sender_name || "メッセージ")}：${safe(reply.body || "（送信取り消し）")}</div>` : ""}
+          <div class="msgbody" style="white-space:pre-wrap">${safe(message.body)}</div>
+          <small>${safe(senderName)} · ${safe(formatMessageTime(message.created_at))}${message.edited_at ? " · 編集済み" : ""}</small>
+          ${reactionButtons ? `<div class="message-reactions">${reactionButtons}</div>` : ""}
+          <div class="message-actions">
+            <button type="button" onclick="replyToMessage('${messageId}')">返信</button>
+            <button type="button" onclick="toggleReactionPicker('${messageId}')">リアクション</button>
+            ${mine ? `<button type="button" onclick="editMessage('${messageId}')">編集</button><button type="button" class="danger" onclick="unsendMessage('${messageId}')">送信取消</button>` : ""}
+          </div>
+          <div class="reaction-picker" id="reactionPicker-${safeAttr(messageId)}" hidden>
+            ${["👍","❤️","😂","😮","😢","🎉"].map(emoji => `<button type="button" onclick="toggleReaction('${messageId}','${emoji}')" aria-label="${emoji}をリアクション">${emoji}</button>`).join("")}
+          </div>
+        </div>`;
+    }).join("");
+    if(wasBottom) box.scrollTop = box.scrollHeight; else box.scrollTop = oldScroll;
   }catch(error){
     console.error("loadMessages error:", error);
     const box = $("messages");
-    if(box){
-      box.innerHTML = `
-        <div style="padding:20px;text-align:center;color:#ff8798;white-space:pre-wrap;">
-          メッセージを読み込めませんでした。<br><br>
-          ${safe(error?.message || "不明なエラー")}
-        </div>
-      `;
-    }
+    if(box) box.innerHTML = `<div style="padding:20px;text-align:center;color:#ff8798;white-space:pre-wrap;">メッセージを読み込めませんでした。<br><br>${safe(error?.message || "不明なエラー")}</div>`;
   }
+}
+
+function safeAttr(value){
+  return String(value ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function replyToMessage(messageId){
+  const node = document.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+  if(!node) return;
+  const body = node.querySelector(".msgbody")?.textContent || "";
+  const name = node.querySelector("small")?.textContent?.split(" · ")[0] || "メッセージ";
+  replyingToMessage = { id: String(messageId), body, name };
+  $("replyingText").textContent = `返信先：${name} — ${body.slice(0,90)}`;
+  $("replyingBanner").classList.add("active");
+  $("messageInput").focus();
+}
+function cancelReply(){
+  replyingToMessage = null;
+  $("replyingBanner")?.classList.remove("active");
+}
+function toggleReactionPicker(messageId){
+  const picker = $("reactionPicker-" + messageId);
+  if(picker) picker.hidden = !picker.hidden;
+}
+async function toggleReaction(messageId, emoji){
+  try{
+    await api("toggle_reaction", { message_id: messageId, emoji });
+    await loadMessages();
+  }catch(error){
+    toast(error?.message || "リアクションを保存できませんでした。");
+  }
+}
+
+async function editMessage(messageId){
+  const result = await api("messages", { conversation_id: currentConversation });
+  const message = (result.messages || []).find(item => String(item.id) === String(messageId));
+  if (!message || message.sender_id !== account?.id) { toast("自分のメッセージだけ編集できます。"); return; }
+  const next = prompt("メッセージを編集", message.body || "");
+  if (next === null) return;
+  const body = next.trim();
+  if (!body) { toast("空のメッセージにはできません。"); return; }
+  if (body.length > 4000) { toast("メッセージは4000文字以内にしてください。"); return; }
+  try { await api("edit_message", { message_id: messageId, body }); await loadMessages(); toast("メッセージを編集しました。"); }
+  catch (error) { toast(error?.message || "メッセージを編集できませんでした。"); }
+}
+async function unsendMessage(messageId){
+  if (!confirm("このメッセージの送信を取り消しますか？相手の画面からも削除されます。")) return;
+  try { await api("unsend_message", { message_id: messageId }); await loadMessages(); await loadConversations(); toast("メッセージの送信を取り消しました。"); }
+  catch (error) { toast(error?.message || "送信を取り消せませんでした。"); }
 }
 
 function formatMessageTime(value){
@@ -2945,7 +3222,8 @@ async function sendMessage(){
 
     const result = await api("send_message", {
       conversation_id: currentConversation,
-      body: value
+      body: value,
+      reply_to_message_id: replyingToMessage?.id || null
     });
 
     if(!result?.ok && !result?.message){
@@ -2953,6 +3231,7 @@ async function sendMessage(){
     }
 
     input.value = "";
+    cancelReply();
     await loadMessages();
 
   }catch(error){
@@ -3709,4 +3988,3 @@ async function restoreSession(){
 
 </body>
 </html>
-  
