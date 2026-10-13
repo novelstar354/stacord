@@ -1111,6 +1111,12 @@ button{
 @media (prefers-reduced-motion: reduce) {
   #app .sidebar, #app .mobile-menu-overlay { transition: none; }
 }
+
+.conversation-action-btn{padding:7px 10px;border-radius:9px;background:#28243a;border:1px solid #494064;color:#e7e0ff;font-size:12px;transition:background .15s,border-color .15s}
+.conversation-action-btn:hover{background:#393052;border-color:#7c5cff}
+.conversation-action-btn.leave{background:#302329;border-color:#5c3a48;color:#ffc6d2}
+.conversation-action-btn.leave:hover{background:#492b38;border-color:#b85b78}
+
 </style>
 </head>
 
@@ -2284,7 +2290,7 @@ async function checkNotifications(silent = false){
         if(!id) continue;
         if(!seenNotificationMessageIds.has(id)){
           seenNotificationMessageIds.add(id);
-          if(!silent && message.sender_id !== account.id){
+          if(!silent && !conversation.notifications_muted && message.sender_id !== account.id){
             const senderName = message.sender?.display_name || message.sender?.user_id || conversationName;
             const body = String(message.body || "新しいメッセージ");
             showBrowserNotification(`Stacord · ${senderName}`, body.slice(0, 180), conversation.id);
@@ -3373,6 +3379,49 @@ function openMobileTalk(id) {
   selectConversation(id);
 }
 
+async function toggleConversationMute(conversationId){
+  const conversation = conversationsCache.find(item => String(item.id) === String(conversationId));
+  if(!conversation) return;
+  const nextMuted = !conversation.notifications_muted;
+  try{
+    await api("set_conversation_mute", { conversation_id: conversationId, muted: nextMuted });
+    conversation.notifications_muted = nextMuted;
+    if(String(currentConversation) === String(conversationId)){
+      await selectConversation(conversationId);
+    }else{
+      await loadConversations();
+    }
+    toast(nextMuted ? "このグループの通知をオフにしました。" : "このグループの通知をオンにしました。");
+  }catch(error){
+    toast(error?.message || "通知設定を変更できませんでした。");
+  }
+}
+
+async function leaveConversation(conversationId){
+  const conversation = conversationsCache.find(item => String(item.id) === String(conversationId));
+  if(!conversation) return;
+  const name = conversation.name || (conversation.is_open_chat ? "オープンチャット" : "グループチャット");
+  const kind = conversation.is_open_chat ? "オープンチャット" : "グループチャット";
+  if(!confirm(`「${name}」から退会しますか？\n退会すると、この${kind}のトーク一覧から削除されます。`)) return;
+  try{
+    await api("leave_conversation", { conversation_id: conversationId });
+    if(String(currentConversation) === String(conversationId)){
+      currentConversation = null;
+      stopTypingForConversation(conversationId);
+      if(messageTimer){ clearInterval(messageTimer); messageTimer = null; }
+      $("messages").innerHTML = "";
+      $("chatHead").textContent = "チャットを選択してください";
+      $("messageInput").value = "";
+      $("messageInput").disabled = true;
+      $("sendMsg").disabled = true;
+    }
+    await loadConversations();
+    toast(`${kind}から退会しました。`);
+  }catch(error){
+    toast(error?.message || "退会できませんでした。");
+  }
+}
+
 /* =====================================================
    SELECT CHAT
 ===================================================== */
@@ -3406,7 +3455,12 @@ async function selectConversation(id){
     $("chatHead").innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div><div>${safe(conversation.name || "グループ")}</div><div class="muted" style="font-size:12px;margin-top:3px">${conversation.is_open_chat ? "オープンチャット" : "グループチャット"} · ${members.length}人</div>${openIdLine}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" onclick="showConversationMembers('${conversation.id}')" style="padding:7px 10px;border-radius:9px">メンバー表示</button><button type="button" onclick="renameGroup('${conversation.id}')" style="padding:7px 10px;border-radius:9px">名前を変更</button></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button type="button" onclick="showConversationMembers('${conversation.id}')" style="padding:7px 10px;border-radius:9px">メンバー表示</button>
+          ${!conversation.is_open_chat ? `<button type="button" onclick="renameGroup('${conversation.id}')" style="padding:7px 10px;border-radius:9px">名前を変更</button>` : ""}
+          <button type="button" class="conversation-action-btn" onclick="toggleConversationMute('${conversation.id}')">${conversation.notifications_muted ? "🔕 通知オン" : "🔔 通知オフ"}</button>
+          <button type="button" class="conversation-action-btn leave" onclick="leaveConversation('${conversation.id}')">退会</button>
+        </div>
       </div>`;
   } else {
     const otherMembers = (conversation.members || []).filter(member => member.id !== account?.id);
