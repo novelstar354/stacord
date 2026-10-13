@@ -979,6 +979,65 @@ button{
 
 
 /* スマホ用：image.pngから開く左スライドメニュー */
+/* スマホ版トーク一覧：チャットメニューのすぐ下に表示 */
+.mobile-talk-list-wrap { display: none; }
+.mobile-talk-list-title {
+  padding: 5px 10px 7px;
+  color: #858da0;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.mobile-talk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 32vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 2px 5px;
+}
+.mobile-talk-item {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 9px !important;
+  background: #1d212b !important;
+  color: #c4cad7 !important;
+  text-align: left;
+  display: block;
+}
+.mobile-talk-item:active,
+.mobile-talk-item:hover { background: #292e3b !important; }
+.mobile-talk-item.selected {
+  background: rgba(124,92,255,.18) !important;
+  border-color: rgba(124,92,255,.55) !important;
+  color: #fff !important;
+}
+.mobile-talk-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.mobile-talk-subtitle {
+  color: #858da0;
+  font-size: 11px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mobile-talk-empty { padding: 8px 10px; color: #858da0; font-size: 12px; }
+@media (max-width: 650px) {
+  #app .mobile-talk-list-wrap { display: block; margin: -2px 0 4px 8px; padding-left: 9px; border-left: 1px solid #343947; }
+  #app .mobile-talk-list { max-height: 32vh; }
+}
+
 .mobile-menu-toggle {
   display: none;
   align-items: center;
@@ -1204,6 +1263,14 @@ button{
       <button data-section="chats">
         ▣ チャット
       </button>
+
+      <!-- スマホ版：チャットメニュー直下のトーク一覧 -->
+      <div class="mobile-talk-list-wrap" id="mobileTalkListWrap">
+        <div class="mobile-talk-list-title">トーク一覧</div>
+        <div id="mobileTalkList" class="mobile-talk-list">
+          <div class="mobile-talk-empty">トークを読み込み中...</div>
+        </div>
+      </div>
 
       <button data-section="open-chats">
         ◉ オープンチャット
@@ -3267,6 +3334,28 @@ async function loadConversations(){
 
 `;
 
+    // スマホの左メニューにも同じトーク一覧を表示する。
+    const mobileTalkList = $("mobileTalkList");
+    if (mobileTalkList) {
+      const mobileHtml = conversationsCache.map(conversation => {
+        const otherMembers = (conversation.members || []).filter(member => member.id !== account?.id);
+        const dmMember = otherMembers[0];
+        const name = conversation.type === "group"
+          ? (conversation.name || "グループ")
+          : (dmMember?.display_name || dmMember?.user_id || "DM");
+        const subtitle = conversation.type === "group"
+          ? `${(conversation.members || []).length}人のグループ`
+          : (dmMember?.user_id ? `@${dmMember.user_id}` : "ダイレクトメッセージ");
+        const presence = conversation.type !== "group" && dmMember
+          ? `<i class="presence-dot ${dmMember.online ? "online" : ""}"></i>`
+          : "";
+        return `<button type="button" class="mobile-talk-item ${currentConversation === conversation.id ? "selected" : ""}" onclick="openMobileTalk('${conversation.id}')"><span class="mobile-talk-name">${presence}${safe(name)}</span><span class="mobile-talk-subtitle">${safe(subtitle)}</span></button>`;
+      });
+      mobileTalkList.innerHTML = mobileHtml.length
+        ? mobileHtml.join("")
+        : '<div class="mobile-talk-empty">まだトークはありません。</div>';
+    }
+
 
   }catch(error){
 
@@ -3276,6 +3365,13 @@ async function loadConversations(){
 
 }
 
+
+/* スマホのメニューからトークを開く */
+function openMobileTalk(id) {
+  showSection("chats");
+  closeMobileMenu();
+  selectConversation(id);
+}
 
 /* =====================================================
    SELECT CHAT
