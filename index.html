@@ -489,6 +489,12 @@ button{
   margin-top:4px;
 }
 
+.presence-line{display:flex;align-items:center;gap:6px;font-size:11px;color:#aab3c5;margin-top:3px}
+.presence-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#697386;flex:0 0 auto}
+.presence-dot.online{background:#39d98a;box-shadow:0 0 0 2px rgba(57,217,138,.13)}
+.chat-presence{display:inline-flex;align-items:center;gap:5px;margin-left:5px;font-size:10px;color:#aab3c5}
+.read-receipt{font-size:10px;color:#a9b7ff;margin-top:3px;align-self:flex-end;padding:0 2px}
+
 
 .message-actions{
   display:flex;
@@ -1489,6 +1495,7 @@ let profilesCache = {};
 
 let syncTimer = null;
 let messageTimer = null;
+let presenceTimer = null;
 let replyingToMessage = null;
 let notificationTimer = null;
 let notificationInitialized = false;
@@ -2282,6 +2289,7 @@ $("logout").onclick =
 function logoutLocal(){
 
   stopSync();
+  if(presenceTimer){ clearInterval(presenceTimer); presenceTimer = null; }
   stopNotificationSync();
   notificationInitialized = false;
   seenNotificationMessageIds.clear();
@@ -3102,6 +3110,17 @@ async function loadConversations(){
       result.conversations ||
       [];
 
+    // 選択中DMのオンライン表示も定期同期で更新する。
+    if(currentConversation){
+      const activeConversation = conversationsCache.find(x => x.id === currentConversation);
+      if(activeConversation && activeConversation.type !== "group"){
+        const other = (activeConversation.members || []).find(m => m.id !== account?.id);
+        const line = $("chatHead")?.querySelector(".presence-line");
+        if(line && other){
+          line.innerHTML = `<i class="presence-dot ${other.online ? "online" : ""}"></i>${other.online ? "オンライン" : "オフライン"}`;
+        }
+      }
+    }
 
     const html =
       [];
@@ -3122,11 +3141,14 @@ async function loadConversations(){
       const subtitle = conversation.type === "group"
         ? `${(conversation.members || []).length}人のグループ`
         : (dmMember?.user_id ? `@${dmMember.user_id}` : "ダイレクトメッセージ");
+      const presenceHtml = conversation.type !== "group" && dmMember
+        ? `<span class="chat-presence"><i class="presence-dot ${dmMember.online ? "online" : ""}"></i>${dmMember.online ? "オンライン" : "オフライン"}</span>`
+        : "";
 
       html.push(`
 <div class="chatitem ${currentConversation === conversation.id ? "sel" : ""}"
   onclick="selectConversation('${conversation.id}')">
-  <div class="chatname">${safe(name)}</div>
+  <div class="chatname">${safe(name)}${presenceHtml}</div>
   <div class="chatpreview">${safe(subtitle)}</div>
 </div>
 `);
@@ -3195,7 +3217,7 @@ async function selectConversation(id){
     const displayName = dmMember?.display_name || "DM相手";
     const userId = dmMember?.user_id || "ID不明";
     $("chatHead").innerHTML = `
-      <div><div>${safe(displayName)}</div><div class="muted" style="font-size:12px;margin-top:3px">@${safe(userId)}</div></div>`;
+      <div><div>${safe(displayName)}</div><div class="muted" style="font-size:12px;margin-top:3px">@${safe(userId)}</div><div class="presence-line"><i class="presence-dot ${dmMember?.online ? "online" : ""}"></i>${dmMember?.online ? "オンライン" : "オフライン"}</div></div>`;
   }
 
   $("messageInput").disabled =
@@ -3220,6 +3242,10 @@ async function selectConversation(id){
 async function loadMessages(){
   if(!sessionToken || !currentConversation) return;
   try{
+    if(!document.hidden) {
+      try { await api("mark_read", { conversation_id: currentConversation }); }
+      catch(readError) { console.warn("mark_read:", readError); }
+    }
     const result = await api("messages", { conversation_id: currentConversation });
     const messages = Array.isArray(result?.messages) ? result.messages : [];
     const box = $("messages");
@@ -3240,6 +3266,7 @@ async function loadMessages(){
             <div class="msgbody" style="white-space:pre-wrap">${safe(message.body)}</div>
             <small>${safe(senderName)} · ${safe(formatMessageTime(message.created_at))}${message.edited_at ? " · 編集済み" : ""}</small>
           </div>
+          ${mine && Number(message.read_by_count) > 0 ? `<div class="read-receipt">既読${Number(message.other_member_count) > 1 ? ` ${Number(message.read_by_count)}` : ""}</div>` : ""}
           ${reactionButtons ? `<div class="message-reactions">${reactionButtons}</div>` : ""}
           <div class="message-actions">
             <button type="button" onclick="replyToMessage('${messageId}')">返信</button>
@@ -3864,9 +3891,34 @@ async function refreshAll(){
    SYNC
 ===================================================== */
 
+function startPresenceHeartbeat(){
+  if(presenceTimer) clearInterval(presenceTimer);
+  const ping = async () => {
+    if(!sessionToken) return;
+    try {
+      await api("presence_ping");
+      // Refresh the displayed online state without changing the selected chat or composer.
+      await loadConversations();
+      if(currentConversation){
+        const conversation = conversationsCache.find(x => x.id === currentConversation);
+        if(conversation && conversation.type !== "group"){
+          const other = (conversation.members || []).find(m => m.id !== account?.id);
+          const line = $("chatHead")?.querySelector(".presence-line");
+          if(line && other){
+            line.innerHTML = `<i class="presence-dot ${other.online ? "online" : ""}"></i>${other.online ? "オンライン" : "オフライン"}`;
+          }
+        }
+      }
+    } catch(error) { console.warn("presence_ping:", error); }
+  };
+  ping();
+  presenceTimer = setInterval(ping, 20000);
+}
+
 function startSync(){
 
   stopSync();
+  startPresenceHeartbeat();
 
 
   /*
@@ -3960,6 +4012,7 @@ function startMessageSync(){
 
 function stopSync(){
 
+  if(presenceTimer){ clearInterval(presenceTimer); presenceTimer = null; }
   if(syncTimer){
 
     clearInterval(
