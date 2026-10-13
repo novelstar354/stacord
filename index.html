@@ -930,6 +930,45 @@ button{
   }
 }
 
+/* オープンチャット専用ページ：既存のStacordカード／ボタンに合わせた統一デザイン */
+.open-chat-pagehead{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  margin-bottom:20px;
+}
+.open-chat-pagehead h2{margin:0 0 6px}
+.open-chat-pagehead p{margin:0;line-height:1.5}
+.open-chat-create{width:auto!important;min-width:112px;padding:10px 16px!important;margin:0!important;border-radius:10px!important}
+.open-chat-panel{
+  background:#191d26;border:1px solid #2d3340;border-radius:14px;padding:18px;margin-bottom:16px;
+}
+.open-chat-panel-title{display:flex;align-items:center;gap:11px;margin-bottom:16px}
+.open-chat-panel-title strong{display:block;margin-bottom:4px}
+.open-chat-panel-icon{
+  display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:11px;
+  background:rgba(124,92,255,.16);border:1px solid rgba(124,92,255,.28);color:#c7b8ff;font-size:25px;
+}
+.open-chat-search-row{display:flex;align-items:stretch;gap:9px}
+.open-chat-search-row .search{flex:1;min-width:0;margin:0;height:44px}
+.open-chat-search-button{width:auto!important;min-width:88px;padding:0 18px!important;margin:0!important;border-radius:10px!important}
+.open-chat-results{display:grid;gap:9px;margin-top:12px}
+.open-chat-results:empty{display:none}
+.open-chat-results .listrow{
+  background:#20242e;border:1px solid #303644;border-radius:11px;padding:13px;
+}
+.open-chat-results .listrow button{border-radius:9px;padding:8px 14px;background:#292f3b;color:#eef1f7}
+.open-chat-results .listrow button.primary{background:#7c5cff;color:#fff}
+.open-chat-hint{margin-top:16px}
+.open-chat-hint p{line-height:1.6;margin:7px 0 12px}
+.open-chat-hint button{margin-top:4px}
+@media(max-width:520px){
+  .open-chat-panel{padding:14px}
+  .open-chat-pagehead{align-items:center}
+  .open-chat-create{min-width:92px;padding:9px 12px!important}
+  .open-chat-search-row{gap:7px}
+  .open-chat-search-button{min-width:72px;padding:0 12px!important}
+  .open-chat-results .listrow{align-items:flex-start!important}
+}
+
 .notification-enable{
   width:100%;margin-top:8px;padding:9px 10px;border-radius:10px;
   border:1px solid var(--line, rgba(255,255,255,.12));
@@ -1166,6 +1205,10 @@ button{
         ▣ チャット
       </button>
 
+      <button data-section="open-chats">
+        ◉ オープンチャット
+      </button>
+
       <button data-section="admin" id="adminNav" class="hidden">
         ⚙ 管理者
       </button>
@@ -1344,6 +1387,39 @@ button{
       </section>
 
 
+      <!-- OPEN CHATS -->
+      <section id="open-chats" class="section">
+        <div class="open-chat-pagehead">
+          <div>
+            <h2>オープンチャット</h2>
+            <p class="muted">IDでチャットを探したり、自分で新しい部屋を作成できます。</p>
+          </div>
+          <button type="button" class="primarybtn open-chat-create" onclick="openCreateOpenChatModal()">＋ 作成</button>
+        </div>
+
+        <div class="open-chat-panel">
+          <div class="open-chat-panel-title">
+            <span class="open-chat-panel-icon">⌕</span>
+            <div>
+              <strong>IDでオープンチャットを検索</strong>
+              <div class="muted small">共有された8文字のIDを入力してください。</div>
+            </div>
+          </div>
+          <div class="open-chat-search-row">
+            <input id="openChatSearchId" class="search" placeholder="オープンチャットID（例：A1B2C3D4）" maxlength="8" autocomplete="off" autocapitalize="characters" onkeydown="if(event.key==='Enter'){event.preventDefault();searchOpenChat()}">
+            <button type="button" class="primarybtn open-chat-search-button" onclick="searchOpenChat()">検索</button>
+          </div>
+          <div id="openChatSearchResults" class="open-chat-results"></div>
+        </div>
+
+        <div class="open-chat-hint item">
+          <strong>オープンチャットについて</strong>
+          <p>作成すると専用IDが発行されます。IDを共有すれば、ほかのユーザーが検索して参加できます。</p>
+          <button type="button" class="primarybtn" onclick="openCreateOpenChatModal()">オープンチャットを作成</button>
+        </div>
+      </section>
+
+
       <!-- CHATS -->
 
       <section
@@ -1351,18 +1427,6 @@ button{
         class="section"
         style="padding:0;margin:-22px"
       >
-
-        <div class="open-chat-tools" style="margin:0 0 14px;padding:14px;background:rgba(24,20,44,.65);border:1px solid rgba(160,120,255,.25);border-radius:14px">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-            <strong>オープンチャット</strong>
-            <button type="button" class="primary" onclick="openCreateOpenChatModal()">＋ 作成</button>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <input id="openChatSearchId" class="search" placeholder="オープンチャットID（例：A1B2C3D4）" maxlength="8" style="flex:1;min-width:180px;text-transform:uppercase" onkeydown="if(event.key==='Enter')searchOpenChat()">
-            <button type="button" onclick="searchOpenChat()">IDで検索</button>
-          </div>
-          <div id="openChatSearchResults" style="margin-top:10px"></div>
-        </div>
 
         <div class="chat-layout">
 
@@ -2582,6 +2646,7 @@ function showSection(id){
     friends:"フレンド",
     requests:"フレンド申請",
     chats:"チャット",
+    "open-chats":"オープンチャット",
     admin:"管理者パネル"
 
   };
@@ -2599,6 +2664,11 @@ function showSection(id){
 
   if(id === "chats")
     loadConversations();
+
+  if(id === "open-chats") {
+    const searchInput = $("openChatSearchId");
+    if(searchInput) setTimeout(() => searchInput.focus({preventScroll:true}), 80);
+  }
 
   if(id === "admin" && isAdmin)
     loadAdminUsers();
