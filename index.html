@@ -1352,6 +1352,18 @@ button{
         style="padding:0;margin:-22px"
       >
 
+        <div class="open-chat-tools" style="margin:0 0 14px;padding:14px;background:rgba(24,20,44,.65);border:1px solid rgba(160,120,255,.25);border-radius:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+            <strong>オープンチャット</strong>
+            <button type="button" class="primary" onclick="openCreateOpenChatModal()">＋ 作成</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input id="openChatSearchId" class="search" placeholder="オープンチャットID（例：A1B2C3D4）" maxlength="8" style="flex:1;min-width:180px;text-transform:uppercase" onkeydown="if(event.key==='Enter')searchOpenChat()">
+            <button type="button" onclick="searchOpenChat()">IDで検索</button>
+          </div>
+          <div id="openChatSearchResults" style="margin-top:10px"></div>
+        </div>
+
         <div class="chat-layout">
 
           <div
@@ -3223,10 +3235,12 @@ async function selectConversation(id){
 
 
   if (conversation.type === "group") {
+    const members = conversation.members || [];
+    const openIdLine = conversation.is_open_chat && conversation.open_chat_id ? `<div class="muted" style="font-size:12px;margin-top:3px">オープンチャットID：<b>${safe(conversation.open_chat_id)}</b></div>` : "";
     $("chatHead").innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-        <div><div>${safe(conversation.name || "グループ")}</div><div class="muted" style="font-size:12px;margin-top:3px">グループチャット</div></div>
-        <button type="button" onclick="renameGroup('${conversation.id}')" style="padding:7px 10px;border-radius:9px">名前を変更</button>
+        <div><div>${safe(conversation.name || "グループ")}</div><div class="muted" style="font-size:12px;margin-top:3px">${conversation.is_open_chat ? "オープンチャット" : "グループチャット"} · ${members.length}人</div>${openIdLine}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" onclick="showConversationMembers('${conversation.id}')" style="padding:7px 10px;border-radius:9px">メンバー表示</button><button type="button" onclick="renameGroup('${conversation.id}')" style="padding:7px 10px;border-radius:9px">名前を変更</button></div>
       </div>`;
   } else {
     const otherMembers = (conversation.members || []).filter(member => member.id !== account?.id);
@@ -3506,6 +3520,73 @@ $("messageInput")
 
 
 /* =====================================================
+   OPEN CHAT: create/search/join/member list
+===================================================== */
+async function openCreateOpenChatModal(){
+  $("modalBox").innerHTML = `
+    <h3>オープンチャットを作成</h3>
+    <div class="field"><label>チャット名</label><input id="openChatName" maxlength="100" placeholder="例：StarOS雑談部屋"></div>
+    <div class="field"><label>説明（任意）</label><textarea id="openChatDescription" maxlength="300" rows="3" placeholder="どんなチャットか説明できます"></textarea></div>
+    <p class="muted">作成後に8文字のオープンチャットIDが発行されます。IDを共有すると他のユーザーが検索・参加できます。</p>
+    <button class="primary" onclick="createOpenChat()">作成する</button>
+    <button style="width:100%;margin-top:8px" onclick="closeModal()">キャンセル</button>`;
+  $("modal").classList.remove("hidden");
+}
+async function createOpenChat(){
+  const name = $("openChatName")?.value.trim() || "";
+  const description = $("openChatDescription")?.value.trim() || "";
+  if(!name){ toast("チャット名を入力してください。"); return; }
+  try{
+    const result = await api("create_open_chat", {name, description});
+    closeModal();
+    await loadConversations(); await loadGroups();
+    showSection("chats");
+    if(result.conversation) await selectConversation(result.conversation.id);
+    toast(`作成しました。オープンチャットID：${result.open_chat_id || result.conversation?.open_chat_id || "確認してください"}`);
+  }catch(error){ toast(error.message || "オープンチャットを作成できませんでした。"); }
+}
+async function searchOpenChat(){
+  const input = $("openChatSearchId");
+  const open_chat_id = (input?.value || "").trim().toUpperCase();
+  const target = $("openChatSearchResults");
+  if(!open_chat_id){ toast("オープンチャットIDを入力してください。"); return; }
+  target.innerHTML = `<div class="muted">検索中...</div>`;
+  try{
+    const result = await api("search_open_chats", {open_chat_id});
+    const chats = result.chats || [];
+    if(!chats.length){ target.innerHTML = `<div class="muted">ID「${safe(open_chat_id)}」のオープンチャットは見つかりませんでした。</div>`; return; }
+    target.innerHTML = chats.map(chat => `<div class="listrow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><strong>${safe(chat.name || "オープンチャット")}</strong><div class="muted" style="font-size:12px">ID：${safe(chat.open_chat_id)} · メンバー ${Number(chat.member_count)||0}人</div>${chat.description ? `<div class="muted" style="font-size:12px">${safe(chat.description)}</div>` : ""}</div>${chat.joined ? `<button onclick="openFoundOpenChat('${chat.id}')">開く</button>` : `<button class="primary" onclick="joinOpenChat('${safe(chat.open_chat_id)}')">参加</button>`}</div>`).join("");
+  }catch(error){ target.innerHTML = `<div class="muted">検索に失敗しました：${safe(error.message || "エラー")}</div>`; }
+}
+async function joinOpenChat(open_chat_id){
+  try{
+    const result = await api("join_open_chat", {open_chat_id});
+    await loadConversations(); await loadGroups();
+    if(result.conversation) await selectConversation(result.conversation.id);
+    toast(result.already_joined ? "すでに参加しています。" : "オープンチャットに参加しました。");
+    await searchOpenChat();
+  }catch(error){ toast(error.message || "参加できませんでした。"); }
+}
+async function openFoundOpenChat(id){
+  await loadConversations();
+  const conversation = conversationsCache.find(x => x.id === id);
+  if(conversation){ await selectConversation(id); return; }
+  try{
+    const result = await api("join_open_chat", {open_chat_id: $("openChatSearchId")?.value.trim().toUpperCase()});
+    await loadConversations();
+    if(result.conversation) await selectConversation(result.conversation.id);
+  }catch(error){ toast(error.message || "チャットを開けませんでした。"); }
+}
+async function showConversationMembers(conversationId){
+  try{
+    const result = await api("open_chat_members", {conversation_id: conversationId});
+    const members = result.members || [];
+    $("modalBox").innerHTML = `<h3>グループメンバー（${members.length}人）</h3><div style="max-height:55vh;overflow:auto">${members.map(member => `<div class="listrow" style="display:flex;align-items:center;gap:10px"><i class="presence-dot ${member.online ? "online" : ""}"></i><div><div>${safe(member.display_name || member.user_id || "ユーザー")}${member.id === account?.id ? "（あなた）" : ""}</div><div class="muted" style="font-size:12px">@${safe(member.user_id || "ID不明")} · ${member.online ? "オンライン" : "オフライン"}</div></div></div>`).join("") || `<div class="muted">メンバーはいません。</div>`}</div><button style="width:100%;margin-top:12px" onclick="closeModal()">閉じる</button>`;
+    $("modal").classList.remove("hidden");
+  }catch(error){ toast(error.message || "メンバーを取得できませんでした。"); }
+}
+
+/* =====================================================
    GROUP NAME EDIT
 ===================================================== */
 
@@ -3570,7 +3651,7 @@ async function loadGroups(){
     ${safe(
       group.name ||
       "グループ"
-    )}
+    )}${group.is_open_chat && group.open_chat_id ? `<div class="muted" style="font-size:11px">ID：${safe(group.open_chat_id)}</div>` : ""}
   </span>
 
   <button
