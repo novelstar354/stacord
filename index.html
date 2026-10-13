@@ -494,6 +494,12 @@ button{
 .presence-dot.online{background:#39d98a;box-shadow:0 0 0 2px rgba(57,217,138,.13)}
 .chat-presence{display:inline-flex;align-items:center;gap:5px;margin-left:5px;font-size:10px;color:#aab3c5}
 .read-receipt{font-size:10px;color:#a9b7ff;margin-top:3px;align-self:flex-end;padding:0 2px}
+.typing-indicator{display:none;flex:0 0 auto;min-height:20px;padding:2px 18px 6px;color:#aab3c5;font-size:12px;align-items:center;gap:7px}
+.typing-indicator.active{display:flex}
+.typing-dots{display:inline-flex;gap:3px;align-items:center}
+.typing-dots i{width:4px;height:4px;border-radius:50%;background:#a9b7ff;animation:typingBounce 1s infinite ease-in-out}
+.typing-dots i:nth-child(2){animation-delay:.15s}.typing-dots i:nth-child(3){animation-delay:.3s}
+@keyframes typingBounce{0%,60%,100%{opacity:.35;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
 
 
 .message-actions{
@@ -1367,6 +1373,11 @@ button{
               id="messages"
             ></div>
 
+            <div class="typing-indicator" id="typingIndicator" aria-live="polite">
+              <span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span id="typingIndicatorText">入力中...</span>
+            </div>
+
             <div class="replying-banner" id="replyingBanner">
               <span id="replyingText">返信先を選択中</span>
               <button type="button" onclick="cancelReply()" aria-label="返信をキャンセル">×</button>
@@ -1496,6 +1507,10 @@ let profilesCache = {};
 let syncTimer = null;
 let messageTimer = null;
 let presenceTimer = null;
+let typingPollTimer = null;
+let typingStopTimer = null;
+let lastTypingSentAt = 0;
+let typingConversationId = null;
 let replyingToMessage = null;
 let notificationTimer = null;
 let notificationInitialized = false;
@@ -3186,8 +3201,10 @@ async function loadConversations(){
 
 async function selectConversation(id){
 
-  currentConversation =
-    id;
+  const previousConversation = currentConversation;
+  if(previousConversation && previousConversation !== id) stopTypingForConversation(previousConversation);
+  currentConversation = id;
+  startTypingPolling();
 
 
   await loadConversations();
@@ -3346,6 +3363,69 @@ function formatMessageTime(value){
 }
 
 /* =====================================================
+   TYPING INDICATOR
+===================================================== */
+function showTypingIndicator(names){
+  const el = $("typingIndicator");
+  const text = $("typingIndicatorText");
+  if(!el || !text) return;
+  if(!names || !names.length){ el.classList.remove("active"); text.textContent = ""; return; }
+  text.textContent = names.length === 1 ? `${names[0]} が入力中...` : `${names.slice(0,2).join("、")}${names.length > 2 ? ` ほか${names.length-2}人` : ""} が入力中...`;
+  el.classList.add("active");
+}
+
+async function setMyTyping(isTyping, conversationId = currentConversation){
+  if(!sessionToken || !conversationId) return;
+  try { await api("typing_update", { conversation_id: conversationId, is_typing: !!isTyping }); }
+  catch(error) { console.debug("typing update:", error?.message || error); }
+}
+
+function handleTypingInput(){
+  const input = $("messageInput");
+  if(!input || !currentConversation || !sessionToken) return;
+  const conversationId = currentConversation;
+  if(!input.value.trim()){
+    clearTimeout(typingStopTimer);
+    setMyTyping(false, conversationId);
+    return;
+  }
+  const now = Date.now();
+  if(conversationId !== typingConversationId || now - lastTypingSentAt > 1800){
+    typingConversationId = conversationId;
+    lastTypingSentAt = now;
+    setMyTyping(true, conversationId);
+  }
+  clearTimeout(typingStopTimer);
+  typingStopTimer = setTimeout(() => setMyTyping(false, conversationId), 4500);
+}
+
+async function pollTypingStatus(){
+  if(!sessionToken || !currentConversation || document.hidden) return;
+  const conversationId = currentConversation;
+  try{
+    const result = await api("typing_status", { conversation_id: conversationId });
+    if(currentConversation !== conversationId) return;
+    showTypingIndicator(Array.isArray(result?.users) ? result.users.map(user => user.display_name || user.user_id || "相手") : []);
+  }catch(error){ console.debug("typing status:", error?.message || error); }
+}
+
+function startTypingPolling(){
+  if(typingPollTimer) clearInterval(typingPollTimer);
+  typingPollTimer = null;
+  showTypingIndicator([]);
+  if(!currentConversation) return;
+  pollTypingStatus();
+  typingPollTimer = setInterval(pollTypingStatus, 1800);
+}
+
+function stopTypingForConversation(conversationId){
+  clearTimeout(typingStopTimer);
+  typingStopTimer = null;
+  if(conversationId && sessionToken) setMyTyping(false, conversationId);
+  showTypingIndicator([]);
+}
+
+/* =====================================================
    SEND MESSAGE
 ===================================================== */
 
@@ -3362,6 +3442,8 @@ async function sendMessage(){
   const value = original.trim();
 
   if(!value) return;
+  clearTimeout(typingStopTimer);
+  setMyTyping(false, currentConversation);
 
   try{
     input.disabled = true;
@@ -3392,6 +3474,12 @@ async function sendMessage(){
   }
 }
 
+
+$("messageInput").addEventListener("input", handleTypingInput);
+$("messageInput").addEventListener("blur", () => {
+  clearTimeout(typingStopTimer);
+  if(currentConversation) setMyTyping(false, currentConversation);
+});
 
 $("sendMsg")
   .onclick =
@@ -4012,6 +4100,8 @@ function startMessageSync(){
 
 function stopSync(){
 
+  if(typingPollTimer){ clearInterval(typingPollTimer); typingPollTimer = null; }
+  clearTimeout(typingStopTimer); typingStopTimer = null;
   if(presenceTimer){ clearInterval(presenceTimer); presenceTimer = null; }
   if(syncTimer){
 
