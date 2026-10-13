@@ -907,6 +907,82 @@ button{
 }
 .notification-enable:hover{background:rgba(255,255,255,.11)}
 
+
+
+/* スマホ用：image.pngから開く左スライドメニュー */
+.mobile-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 5px;
+  margin: 0 10px 0 -7px;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+}
+.mobile-menu-toggle img {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+.mobile-menu-toggle:active,
+.mobile-menu-toggle:focus-visible {
+  background: #292e39;
+  outline: 1px solid #7c5cff;
+}
+.mobile-menu-overlay {
+  display: none;
+}
+@media (max-width: 650px) {
+  #app { position: relative; overflow: hidden; }
+  #app .mobile-menu-toggle { display: inline-flex; }
+  #app .topbar { flex: 0 0 54px; height: 54px; padding: 0 14px; z-index: 5; }
+  #app .sidebar {
+    display: flex !important;
+    position: fixed;
+    z-index: 1002;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: min(285px, 82vw);
+    min-width: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    padding: 16px;
+    box-shadow: 18px 0 45px rgba(0,0,0,.38);
+    transform: translateX(-110%);
+    transition: transform .24s ease;
+    visibility: hidden;
+  }
+  #app.mobile-menu-open .sidebar {
+    transform: translateX(0);
+    visibility: visible;
+  }
+  #app .mobile-menu-overlay {
+    display: block;
+    position: fixed;
+    z-index: 1001;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity .24s ease, visibility .24s ease;
+  }
+  #app.mobile-menu-open .mobile-menu-overlay {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  #app .main { min-width: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app .sidebar, #app .mobile-menu-overlay { transition: none; }
+}
 </style>
 </head>
 
@@ -1031,7 +1107,9 @@ button{
   class="hidden"
 >
 
-  <aside class="sidebar">
+  <div id="mobileMenuOverlay" class="mobile-menu-overlay" onclick="closeMobileMenu()" aria-hidden="true"></div>
+
+  <aside class="sidebar" id="mainSidebar">
 
     <div class="brand">
       Sta<b>cord</b>
@@ -1118,11 +1196,11 @@ button{
 
   <main class="main">
 
-    <div
-      class="topbar"
-      id="topTitle"
-    >
-      ホーム
+    <div class="topbar" id="appTopbar">
+      <button type="button" id="mobileMenuToggle" class="mobile-menu-toggle" aria-label="メニューを開く" aria-expanded="false" onclick="toggleMobileMenu()">
+        <img src="image.png" alt="メニュー" />
+      </button>
+      <span id="topTitle">ホーム</span>
     </div>
 
     <div class="content">
@@ -2384,6 +2462,27 @@ async function switchAccount(userId){
 
 
 /* =====================================================
+   MOBILE MENU
+===================================================== */
+function toggleMobileMenu(){
+  const app = $("app");
+  if(!app) return;
+  if(app.classList.contains("mobile-menu-open")) closeMobileMenu();
+  else {
+    app.classList.add("mobile-menu-open");
+    const toggle = $("mobileMenuToggle");
+    if(toggle){ toggle.setAttribute("aria-expanded", "true"); toggle.setAttribute("aria-label", "メニューを閉じる"); }
+  }
+}
+function closeMobileMenu(){
+  const app = $("app");
+  if(!app) return;
+  app.classList.remove("mobile-menu-open");
+  const toggle = $("mobileMenuToggle");
+  if(toggle){ toggle.setAttribute("aria-expanded", "false"); toggle.setAttribute("aria-label", "メニューを開く"); }
+}
+
+/* =====================================================
    SECTION
 ===================================================== */
 
@@ -2405,6 +2504,7 @@ function showSection(id){
   if(!target)
     return;
 
+  closeMobileMenu();
 
   target.classList.add(
     "active"
