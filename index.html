@@ -1155,6 +1155,127 @@ body[data-theme="light"] .chat-area,body[data-theme="light"] #messages{backgroun
 body[data-theme="light"] .msg:not(.mine) .msg-bubble{background:#fff!important;color:#171923!important}
 body[data-theme="light"] .reply-preview{background:#f0f1f6!important;color:#44495a!important}
 
+
+/* Light-theme contrast pass: improve low-contrast labels, forms, dialogs and menus */
+body[data-theme="light"] #app,
+body[data-theme="light"] #app * { text-shadow: none; }
+body[data-theme="light"] #app h1,
+body[data-theme="light"] #app h2,
+body[data-theme="light"] #app h3,
+body[data-theme="light"] #app h4,
+body[data-theme="light"] #app label,
+body[data-theme="light"] #app .title,
+body[data-theme="light"] #app .chat-title,
+body[data-theme="light"] #app .conversation-title,
+body[data-theme="light"] #app .username,
+body[data-theme="light"] #app .display-name,
+body[data-theme="light"] #app .message-text,
+body[data-theme="light"] #app .section-title,
+body[data-theme="light"] #app .modal-title,
+body[data-theme="light"] #app .open-chat-title,
+body[data-theme="light"] #app .group-name,
+body[data-theme="light"] #app .chat-list-item strong,
+body[data-theme="light"] #app .item strong,
+body[data-theme="light"] #app .card strong { color:#171923!important; }
+body[data-theme="light"] #app p,
+body[data-theme="light"] #app small,
+body[data-theme="light"] #app .description,
+body[data-theme="light"] #app .subtitle,
+body[data-theme="light"] #app .secondary-text,
+body[data-theme="light"] #app .timestamp,
+body[data-theme="light"] #app .message-time,
+body[data-theme="light"] #app .hint,
+body[data-theme="light"] #app .empty-state,
+body[data-theme="light"] #app .member-id,
+body[data-theme="light"] #app .chat-preview { color:#555c6d!important; }
+body[data-theme="light"] #app input,
+body[data-theme="light"] #app textarea,
+body[data-theme="light"] #app select,
+body[data-theme="light"] #app option { color:#171923!important; background-color:#fff!important; }
+body[data-theme="light"] #app input::placeholder,
+body[data-theme="light"] #app textarea::placeholder { color:#73798a!important; opacity:1!important; }
+body[data-theme="light"] #app input:focus,
+body[data-theme="light"] #app textarea:focus,
+body[data-theme="light"] #app select:focus { border-color:#7352df!important; outline:2px solid #7352df33!important; }
+body[data-theme="light"] #app button { color:#252838; }
+body[data-theme="light"] #app button.primary,
+body[data-theme="light"] #app button.primarybtn,
+body[data-theme="light"] #app .primary,
+body[data-theme="light"] #app .primarybtn { background:#6844d6!important; color:#fff!important; border-color:#6844d6!important; }
+body[data-theme="light"] #app button.danger,
+body[data-theme="light"] #app .danger,
+body[data-theme="light"] #app .leave { background:#fff0f2!important; color:#9b233b!important; border-color:#e7aab5!important; }
+body[data-theme="light"] #app .modal,
+body[data-theme="light"] #app .modal-content,
+body[data-theme="light"] #app .modalbox,
+body[data-theme="light"] #app .dialog,
+body[data-theme="light"] #app .dropdown-menu,
+body[data-theme="light"] #app .popover,
+body[data-theme="light"] #app .mobile-menu { background:#fff!important; color:#171923!important; border-color:#d7dbe5!important; }
+body[data-theme="light"] #app .nav button:hover,
+body[data-theme="light"] #app .chat-list-item:hover,
+body[data-theme="light"] #app .item:hover { background:#f0edff!important; color:#382477!important; }
+body[data-theme="light"] #app .nav button.active,
+body[data-theme="light"] #app .chat-list-item.active,
+body[data-theme="light"] #app .item.active { background:#e9e3ff!important; color:#4d2bb5!important; border-color:#c9baff!important; }
+body[data-theme="light"] #app .badge,
+body[data-theme="light"] #app .pill,
+body[data-theme="light"] #app .status-badge { background:#ece8ff!important; color:#4e32a8!important; border-color:#d2c6ff!important; }
+body[data-theme="light"] #app .online,
+body[data-theme="light"] #app .status-online { color:#087443!important; }
+body[data-theme="light"] #app .offline,
+body[data-theme="light"] #app .status-offline { color:#5f6676!important; }
+body[data-theme="light"] #app .message-actions button,
+body[data-theme="light"] #app .reaction-picker button,
+body[data-theme="light"] #app .reaction-chip,
+body[data-theme="light"] #app .conversation-action-btn { background:#f0f1f6!important; color:#242736!important; border-color:#d5d9e3!important; }
+body[data-theme="light"] #app .msg.mine .msg-bubble { background:#e9e2ff!important; color:#211a38!important; border-color:#c9baff!important; }
+body[data-theme="light"] #app .msg:not(.mine) .msg-bubble { background:#fff!important; color:#171923!important; border-color:#d8dce6!important; }
+body[data-theme="light"] #app .reply-preview { background:#f0f1f6!important; color:#34394a!important; border-color:#d8dce6!important; }
+body[data-theme="light"] #app :disabled { opacity:.65; }
+body[data-theme="light"] #app a { color:#5636c7!important; }
+body[data-theme="light"] #app hr { border-color:#dfe2e9!important; }
+
+
+
+/* Screenshot follow-up: fix remaining dark chat header and selected conversation in light theme */
+body[data-theme="light"] #app .chathead {
+  background: #ffffff !important;
+  color: #171923 !important;
+  border-bottom: 1px solid #d9dce5 !important;
+}
+body[data-theme="light"] #app .chathead .muted,
+body[data-theme="light"] #app .chathead .presence-line {
+  color: #555c6d !important;
+}
+body[data-theme="light"] #app .chathead .presence-dot {
+  border-color: #ffffff;
+}
+body[data-theme="light"] #app .chat-list {
+  background: #f4f5f8 !important;
+  border-right-color: #d9dce5 !important;
+}
+body[data-theme="light"] #app .chatitem,
+body[data-theme="light"] #app .chatitem .chatname {
+  color: #202331 !important;
+}
+body[data-theme="light"] #app .chatitem .chatpreview {
+  color: #62697a !important;
+}
+body[data-theme="light"] #app .chatitem:hover {
+  background: #e9eaf1 !important;
+}
+body[data-theme="light"] #app .chatitem.sel {
+  background: #e9e3ff !important;
+  color: #3d287d !important;
+  outline: 1px solid #c9baff;
+}
+body[data-theme="light"] #app .chatitem.sel .chatname {
+  color: #3d287d !important;
+}
+body[data-theme="light"] #app .chatitem.sel .chatpreview {
+  color: #5c4a91 !important;
+}
 </style>
 </head>
 
