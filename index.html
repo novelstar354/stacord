@@ -1117,6 +1117,44 @@ button{
 .conversation-action-btn.leave{background:#302329;border-color:#5c3a48;color:#ffc6d2}
 .conversation-action-btn.leave:hover{background:#492b38;border-color:#b85b78}
 
+
+
+/* Theme selector: dark by default, optional black/white light theme */
+.theme-switch-btn{width:100%;margin-top:8px;padding:9px 12px;border-radius:10px;background:#292d3a;color:#edf0f7;border:1px solid #3b4050;text-align:left}
+body[data-theme="light"]{background:#f4f5f8;color:#171923}
+body[data-theme="light"] .left,body[data-theme="light"] aside.left,body[data-theme="light"] .sidebar{background:#fff!important;color:#171923!important;border-color:#d9dce5!important}
+body[data-theme="light"] .main,body[data-theme="light"] .content,body[data-theme="light"] .section{background:#f4f5f8!important;color:#171923!important}
+body[data-theme="light"] .right,body[data-theme="light"] aside.right{background:#fff!important;color:#171923!important;border-color:#d9dce5!important}
+body[data-theme="light"] .topbar{background:#fff!important;color:#171923!important;border-color:#d9dce5!important}
+body[data-theme="light"] .item,body[data-theme="light"] .card,body[data-theme="light"] .modalbox,body[data-theme="light"] .open-chat-panel,body[data-theme="light"] .listrow,body[data-theme="light"] .group-card,body[data-theme="light"] .chat-list-item{background:#fff!important;color:#171923!important;border-color:#dfe2e9!important}
+body[data-theme="light"] input,body[data-theme="light"] textarea,body[data-theme="light"] select{background:#fff!important;color:#171923!important;border-color:#cbd0dc!important}
+body[data-theme="light"] button:not(.primary):not(.primarybtn):not(.logout):not(.danger){background:#eceef4;color:#202331;border-color:#d8dce6}
+body[data-theme="light"] .nav button{color:#333747!important}
+body[data-theme="light"] .nav button.active{background:#e9e3ff!important;color:#5636c7!important}
+body[data-theme="light"] .muted,body[data-theme="light"] .mobile-talk-list-title,body[data-theme="light"] .mobile-talk-empty{color:#656b7a!important}
+body[data-theme="light"] .msg-bubble{background:#fff!important;color:#171923!important;border:1px solid #e0e2e9}
+body[data-theme="light"] .msg.mine .msg-bubble{background:#eee9ff!important;color:#211a38!important;border-color:#d7ccff!important}
+body[data-theme="light"] .message-actions button,body[data-theme="light"] .reaction-picker button,body[data-theme="light"] .reaction-chip{background:#eceef4!important;color:#242736!important}
+body[data-theme="light"] .theme-switch-btn{background:#f0f1f6!important;color:#202331!important;border-color:#d5d9e3!important}
+body[data-theme="light"] .mobile-menu{background:#fff!important;color:#171923!important}
+body[data-theme="light"] .mobile-menu-toggle{background:#fff!important;border-color:#d8dce6!important}
+body[data-theme="light"] .toast{background:#fff!important;color:#171923!important;border-color:#d8dce6!important}
+body[data-theme="light"] .presence-line{color:#5f6676}
+.message-actions .copy-message-btn{opacity:.68}
+.message-actions .copy-message-btn:hover{opacity:1}
+
+
+body[data-theme="light"] #app{background:#f4f5f8!important;color:#171923!important}
+body[data-theme="light"] .sidebar{background:#fff!important;color:#171923!important}
+body[data-theme="light"] .userbox{background:#f1f2f7!important;border:1px solid #dfe2e9!important}
+body[data-theme="light"] .account-switch,body[data-theme="light"] .notification-enable{background:#e7e9f0!important;color:#202331!important}
+body[data-theme="light"] .brand{color:#171923!important}
+body[data-theme="light"] .auth-card,body[data-theme="light"] #auth .card{background:#fff!important;color:#171923!important;border-color:#dfe2e9!important}
+body[data-theme="light"] #auth{background:radial-gradient(circle at 20% 20%,#e8e2ff 0,#f4f5f8 42%),#f4f5f8!important;color:#171923!important}
+body[data-theme="light"] .chat-area,body[data-theme="light"] #messages{background:#f4f5f8!important;color:#171923!important}
+body[data-theme="light"] .msg:not(.mine) .msg-bubble{background:#fff!important;color:#171923!important}
+body[data-theme="light"] .reply-preview{background:#f0f1f6!important;color:#44495a!important}
+
 </style>
 </head>
 
@@ -1332,6 +1370,8 @@ button{
       >
         アカウント切替
       </button>
+
+      <button type="button" id="themeSwitchBtn" class="theme-switch-btn" onclick="toggleTheme()">☀ 白テーマに切替</button>
 
       <button type="button" id="enableNotifications" class="notification-enable" onclick="enableNotifications()">🔔 通知を有効にする</button>
 
@@ -3522,6 +3562,7 @@ async function loadMessages(){
           <div class="message-actions">
             <button type="button" onclick="replyToMessage('${messageId}')">返信</button>
             <button type="button" onclick="toggleReactionPicker('${messageId}')">リアクション</button>
+            <button type="button" class="copy-message-btn" onclick="copyMessage('${messageId}')">コピー</button>
             ${mine ? `<button type="button" onclick="editMessage('${messageId}')">編集</button><button type="button" class="danger" onclick="unsendMessage('${messageId}')">送信取消</button>` : ""}
           </div>
           <div class="reaction-picker" id="reactionPicker-${safeAttr(messageId)}" hidden>
@@ -3539,6 +3580,30 @@ async function loadMessages(){
 
 function safeAttr(value){
   return String(value ?? "").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function applyTheme(theme){
+  const normalized = theme === "light" ? "light" : "dark";
+  document.body.dataset.theme = normalized;
+  try { localStorage.setItem("stacord_theme", normalized); } catch {}
+  const button = $("themeSwitchBtn");
+  if(button) button.textContent = normalized === "dark" ? "☀ 白テーマに切替" : "☾ 黒テーマに切替";
+}
+function toggleTheme(){ applyTheme(document.body.dataset.theme === "light" ? "dark" : "light"); }
+try { document.body.dataset.theme = localStorage.getItem("stacord_theme") === "light" ? "light" : "dark"; } catch { document.body.dataset.theme = "dark"; }
+
+async function copyMessage(messageId){
+  const node = document.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+  const text = node?.querySelector(".msgbody")?.textContent || "";
+  if(!text){ toast("コピーするメッセージがありません。"); return; }
+  try{
+    if(navigator.clipboard && window.isSecureContext){ await navigator.clipboard.writeText(text); }
+    else {
+      const area = document.createElement("textarea"); area.value = text; area.style.position="fixed"; area.style.opacity="0"; document.body.appendChild(area); area.select();
+      const ok = document.execCommand("copy"); area.remove(); if(!ok) throw new Error("copy failed");
+    }
+    toast("メッセージをコピーしました。");
+  }catch{ toast("コピーできませんでした。ブラウザーの権限を確認してください。"); }
 }
 
 function replyToMessage(messageId){
@@ -3747,17 +3812,26 @@ async function openCreateOpenChatModal(){
     <h3>オープンチャットを作成</h3>
     <div class="field"><label>チャット名</label><input id="openChatName" maxlength="100" placeholder="例：StarOS雑談部屋"></div>
     <div class="field"><label>説明（任意）</label><textarea id="openChatDescription" maxlength="300" rows="3" placeholder="どんなチャットか説明できます"></textarea></div>
+    <div class="field"><label style="display:flex;align-items:center;gap:8px"><input id="openChatRequireAuth" type="checkbox" style="width:auto" onchange="toggleOpenChatAuthFields()"> 参加時にパスワード認証を必要にする</label><div class="muted">オンにすると、参加する人は設定したパスワードの入力が必要です。</div></div>
+    <div class="field hidden" id="openChatPasswordField"><label>参加パスワード（6文字以上）</label><input id="openChatJoinPassword" type="password" minlength="6" maxlength="128" autocomplete="new-password" placeholder="参加用パスワード"></div>
     <p class="muted">作成後に8文字のオープンチャットIDが発行されます。IDを共有すると他のユーザーが検索・参加できます。</p>
     <button class="primary" onclick="createOpenChat()">作成する</button>
     <button style="width:100%;margin-top:8px" onclick="closeModal()">キャンセル</button>`;
   $("modal").classList.remove("hidden");
 }
+function toggleOpenChatAuthFields(){
+  const required = $("openChatRequireAuth")?.checked === true;
+  $("openChatPasswordField")?.classList.toggle("hidden", !required);
+}
 async function createOpenChat(){
   const name = $("openChatName")?.value.trim() || "";
   const description = $("openChatDescription")?.value.trim() || "";
+  const requires_auth = $("openChatRequireAuth")?.checked === true;
+  const join_password = $("openChatJoinPassword")?.value || "";
   if(!name){ toast("チャット名を入力してください。"); return; }
+  if(requires_auth && join_password.length < 6){ toast("参加パスワードは6文字以上にしてください。"); return; }
   try{
-    const result = await api("create_open_chat", {name, description});
+    const result = await api("create_open_chat", {name, description, requires_auth, join_password});
     closeModal();
     await loadConversations(); await loadGroups();
     showSection("chats");
@@ -3775,12 +3849,17 @@ async function searchOpenChat(){
     const result = await api("search_open_chats", {open_chat_id});
     const chats = result.chats || [];
     if(!chats.length){ target.innerHTML = `<div class="muted">ID「${safe(open_chat_id)}」のオープンチャットは見つかりませんでした。</div>`; return; }
-    target.innerHTML = chats.map(chat => `<div class="listrow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><strong>${safe(chat.name || "オープンチャット")}</strong><div class="muted" style="font-size:12px">ID：${safe(chat.open_chat_id)} · メンバー ${Number(chat.member_count)||0}人</div>${chat.description ? `<div class="muted" style="font-size:12px">${safe(chat.description)}</div>` : ""}</div>${chat.joined ? `<button onclick="openFoundOpenChat('${chat.id}')">開く</button>` : `<button class="primary" onclick="joinOpenChat('${safe(chat.open_chat_id)}')">参加</button>`}</div>`).join("");
+    target.innerHTML = chats.map(chat => `<div class="listrow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><strong>${safe(chat.name || "オープンチャット")}</strong><div class="muted" style="font-size:12px">ID：${safe(chat.open_chat_id)} · メンバー ${Number(chat.member_count)||0}人</div>${chat.description ? `<div class="muted" style="font-size:12px">${safe(chat.description)}</div>` : ""}${chat.requires_auth ? `<div class="muted" style="font-size:12px">🔒 参加パスワードが必要</div>` : ""}</div>${chat.joined ? `<button onclick="openFoundOpenChat('${chat.id}')">開く</button>` : `<button class="primary" onclick="joinOpenChat('${safe(chat.open_chat_id)}',${chat.requires_auth ? "true" : "false"})">参加</button>`}</div>`).join("");
   }catch(error){ target.innerHTML = `<div class="muted">検索に失敗しました：${safe(error.message || "エラー")}</div>`; }
 }
-async function joinOpenChat(open_chat_id){
+async function joinOpenChat(open_chat_id, requiresAuth = false){
+  let join_password = "";
+  if(requiresAuth){
+    join_password = prompt("このオープンチャットは参加パスワードが必要です。パスワードを入力してください。") || "";
+    if(!join_password) return;
+  }
   try{
-    const result = await api("join_open_chat", {open_chat_id});
+    const result = await api("join_open_chat", {open_chat_id, join_password});
     await loadConversations(); await loadGroups();
     if(result.conversation) await selectConversation(result.conversation.id);
     toast(result.already_joined ? "すでに参加しています。" : "オープンチャットに参加しました。");
@@ -4548,6 +4627,8 @@ async function restoreSession(){
 
 })();
 
+
+window.addEventListener("DOMContentLoaded", () => applyTheme(document.body.dataset.theme));
 </script>
 
 </body>
