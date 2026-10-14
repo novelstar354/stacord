@@ -1645,12 +1645,12 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
           <div class="open-chat-panel-title">
             <span class="open-chat-panel-icon">⌕</span>
             <div>
-              <strong>IDでオープンチャットを検索</strong>
+              <strong>キーワード・IDでオープンチャットを検索</strong>
               <div class="muted small">共有された8文字のIDを入力してください。</div>
             </div>
           </div>
           <div class="open-chat-search-row">
-            <input id="openChatSearchId" class="search" placeholder="オープンチャットID（例：A1B2C3D4）" maxlength="8" autocomplete="off" autocapitalize="characters" onkeydown="if(event.key==='Enter'){event.preventDefault();searchOpenChat()}">
+            <input id="openChatSearchId" class="search" placeholder="名前・説明のキーワード、またはID（例：A1B2C3D4）" maxlength="8" autocomplete="off" autocapitalize="characters" onkeydown="if(event.key==='Enter'){event.preventDefault();searchOpenChat()}">
             <button type="button" class="primarybtn open-chat-search-button" onclick="searchOpenChat()">検索</button>
           </div>
           <div id="openChatSearchResults" class="open-chat-results"></div>
@@ -3984,14 +3984,14 @@ async function createOpenChat(){
 }
 async function searchOpenChat(){
   const input = $("openChatSearchId");
-  const open_chat_id = (input?.value || "").trim().toUpperCase();
+  const query = (input?.value || "").trim();
   const target = $("openChatSearchResults");
-  if(!open_chat_id){ toast("オープンチャットIDを入力してください。"); return; }
+  if(!query){ toast("キーワードまたはオープンチャットIDを入力してください。"); return; }
   target.innerHTML = `<div class="muted">検索中...</div>`;
   try{
-    const result = await api("search_open_chats", {open_chat_id});
+    const result = await api("search_open_chats", {query});
     const chats = result.chats || [];
-    if(!chats.length){ target.innerHTML = `<div class="muted">ID「${safe(open_chat_id)}」のオープンチャットは見つかりませんでした。</div>`; return; }
+    if(!chats.length){ target.innerHTML = `<div class="muted">「${safe(query)}」に一致するオープンチャットは見つかりませんでした。</div>`; return; }
     target.innerHTML = chats.map(chat => `<div class="listrow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="min-width:0;flex:1"><strong>${safe(chat.name || "オープンチャット")}</strong><div class="muted" style="font-size:12px">ID：${safe(chat.open_chat_id)} · メンバー ${Number(chat.member_count)||0}人</div>${chat.description ? `<div class="muted" style="font-size:12px">${safe(chat.description)}</div>` : ""}${chat.requires_auth ? `<div class="muted" style="font-size:12px">🔒 参加パスワードが必要</div>` : ""}</div>${chat.joined ? `<button onclick="openFoundOpenChat('${chat.id}')">開く</button>` : `<button class="primary" onclick="joinOpenChat('${safe(chat.open_chat_id)}',${chat.requires_auth ? "true" : "false"})">参加</button>`}</div>`).join("");
   }catch(error){ target.innerHTML = `<div class="muted">検索に失敗しました：${safe(error.message || "エラー")}</div>`; }
 }
@@ -4023,9 +4023,34 @@ async function showConversationMembers(conversationId){
   try{
     const result = await api("open_chat_members", {conversation_id: conversationId});
     const members = result.members || [];
-    $("modalBox").innerHTML = `<h3>グループメンバー（${members.length}人）</h3><div style="max-height:55vh;overflow:auto">${members.map(member => `<div class="listrow" style="display:flex;align-items:center;gap:10px"><i class="presence-dot ${member.online ? "online" : ""}"></i><div><div>${safe(member.display_name || member.user_id || "ユーザー")}${member.id === account?.id ? "（あなた）" : ""}</div><div class="muted" style="font-size:12px">@${safe(member.user_id || "ID不明")} · ${member.online ? "オンライン" : "オフライン"}</div></div></div>`).join("") || `<div class="muted">メンバーはいません。</div>`}</div><button style="width:100%;margin-top:12px" onclick="closeModal()">閉じる</button>`;
+    const canManage = !!result.can_manage && !!result.is_open_chat;
+    const rows = members.map(member => {
+      const leader = member.role === "leader";
+      const controls = canManage && member.id !== account?.id ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto">${leader ? `<button onclick="changeOpenChatRole('${conversationId}','${member.id}','member')">リーダー権限を剥奪</button>` : `<button onclick="changeOpenChatRole('${conversationId}','${member.id}','leader')">リーダーにする</button>`}<button class="danger" onclick="removeOpenChatMember('${conversationId}','${member.id}')">メンバー削除</button></div>` : "";
+      return `<div class="listrow" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><i class="presence-dot ${member.online ? "online" : ""}"></i><div style="min-width:0"><div>${safe(member.display_name || member.user_id || "ユーザー")}${member.id === account?.id ? "（あなた）" : ""} ${leader ? `<span class="badge">リーダー</span>` : ""}</div><div class="muted" style="font-size:12px">@${safe(member.user_id || "ID不明")} · ${member.online ? "オンライン" : "オフライン"}</div></div>${controls}</div>`;
+    }).join("");
+    const auth = canManage ? `<div class="listrow"><strong>入会時のパスワード認証</strong><p class="muted">${result.requires_auth ? "現在オンです" : "現在オフです"}</p><button onclick="toggleOpenChatAuth('${conversationId}',${result.requires_auth ? "false" : "true"})">${result.requires_auth ? "認証をオフにする" : "認証をオンにする"}</button></div>` : "";
+    $("modalBox").innerHTML = `<h3>オープンチャットメンバー（${members.length}人）</h3>${auth}<div style="max-height:55vh;overflow:auto">${rows || `<div class="muted">メンバーはいません。</div>`}</div><button style="width:100%;margin-top:12px" onclick="closeModal()">閉じる</button>`;
     $("modal").classList.remove("hidden");
   }catch(error){ toast(error.message || "メンバーを取得できませんでした。"); }
+}
+async function changeOpenChatRole(conversationId, memberId, role){
+  const actionText = role === "leader" ? "リーダー権限を譲渡" : "リーダー権限を剥奪";
+  if(!confirm(`${actionText}しますか？`)) return;
+  try{ await api("manage_open_chat_member", {conversation_id:conversationId, member_id:memberId, operation:role === "leader" ? "transfer_leader" : "revoke_leader"}); toast("権限を更新しました。"); await showConversationMembers(conversationId); }
+  catch(e){ toast(e.message || "権限を更新できませんでした。"); }
+}
+async function removeOpenChatMember(conversationId, memberId){
+  if(!confirm("このメンバーをオープンチャットから削除しますか？")) return;
+  try{ await api("manage_open_chat_member", {conversation_id:conversationId, member_id:memberId, operation:"remove_member"}); toast("メンバーを削除しました。"); await showConversationMembers(conversationId); await loadConversations(); }
+  catch(e){ toast(e.message || "メンバーを削除できませんでした。"); }
+}
+async function toggleOpenChatAuth(conversationId, requires_auth){
+  let join_password = "";
+  if(requires_auth){ join_password = prompt("参加パスワードを設定してください（6文字以上）") || ""; if(join_password.length < 6){ toast("パスワードは6文字以上にしてください。"); return; } }
+  if(!confirm(`入会時の認証を${requires_auth ? "オン" : "オフ"}にしますか？`)) return;
+  try{ await api("manage_open_chat_member", {conversation_id:conversationId, operation:"set_auth", requires_auth, join_password}); toast("認証設定を更新しました。"); await showConversationMembers(conversationId); }
+  catch(e){ toast(e.message || "認証設定を更新できませんでした。"); }
 }
 
 /* =====================================================
