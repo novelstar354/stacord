@@ -1119,6 +1119,16 @@ button{
 
 
 
+
+/* 未読バッジ：赤丸＋白文字 */
+.unread-count-badge{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#e53945;color:#fff!important;font-size:11px;font-weight:800;line-height:1;box-sizing:border-box;flex-shrink:0;}
+.unread-count-badge.dot-only{min-width:9px;width:9px;height:9px;padding:0;font-size:0;}
+.chatname-row{display:flex;align-items:center;gap:7px;min-width:0;}
+.chatname-row .chatname-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nav-unread-badge{margin-left:auto;}
+.mobile-talk-name{display:flex;align-items:center;gap:6px;min-width:0;}
+.mobile-talk-name .mobile-talk-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
 /* Theme selector: dark by default, optional black/white light theme */
 .theme-switch-btn{width:100%;margin-top:8px;padding:9px 12px;border-radius:10px;background:#292d3a;color:#edf0f7;border:1px solid #3b4050;text-align:left}
 body[data-theme="light"]{background:#f4f5f8;color:#171923}
@@ -1425,8 +1435,8 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
         ✉ 申請
       </button>
 
-      <button data-section="chats">
-        ▣ チャット
+      <button data-section="chats" id="chatsNavButton">
+        ▣ チャット <span id="chatsNavUnread" class="unread-count-badge nav-unread-badge dot-only hidden" aria-label="未読あり"></span>
       </button>
 
       <!-- スマホ版：チャットメニュー直下のトーク一覧 -->
@@ -3440,6 +3450,14 @@ async function loadConversations(){
     conversationsCache =
       result.conversations ||
       [];
+    const totalUnread = conversationsCache.reduce((sum, item) => sum + Math.max(0, Number(item.unread_count ?? item.unreadCount ?? 0) || 0), 0);
+    const navBadge = $("chatsNavUnread");
+    if (navBadge) {
+      navBadge.classList.toggle("hidden", totalUnread <= 0);
+      navBadge.classList.toggle("dot-only", totalUnread <= 0);
+      navBadge.textContent = totalUnread > 99 ? "99+" : String(totalUnread);
+      navBadge.setAttribute("aria-label", totalUnread > 0 ? `未読${totalUnread}件` : "未読なし");
+    }
 
     // 選択中DMのオンライン表示も定期同期で更新する。
     if(currentConversation){
@@ -3476,10 +3494,12 @@ async function loadConversations(){
         ? `<span class="chat-presence"><i class="presence-dot ${dmMember.online ? "online" : ""}"></i>${dmMember.online ? "オンライン" : "オフライン"}</span>`
         : "";
 
+      const unreadCount = Math.max(0, Number(conversation.unread_count ?? conversation.unreadCount ?? 0) || 0);
+      const unreadBadge = unreadCount > 0 ? `<span class="unread-count-badge" aria-label="未読${unreadCount}件">${unreadCount > 99 ? "99+" : unreadCount}</span>` : "";
       html.push(`
 <div class="chatitem ${currentConversation === conversation.id ? "sel" : ""}"
   onclick="selectConversation('${conversation.id}')">
-  <div class="chatname">${safe(name)}${presenceHtml}</div>
+  <div class="chatname-row">${unreadBadge}<div class="chatname chatname-text">${safe(name)}${presenceHtml}</div></div>
   <div class="chatpreview">${safe(subtitle)}</div>
 </div>
 `);
@@ -3516,7 +3536,9 @@ async function loadConversations(){
         const presence = conversation.type !== "group" && dmMember
           ? `<i class="presence-dot ${dmMember.online ? "online" : ""}"></i>`
           : "";
-        return `<button type="button" class="mobile-talk-item ${currentConversation === conversation.id ? "selected" : ""}" onclick="openMobileTalk('${conversation.id}')"><span class="mobile-talk-name">${presence}${safe(name)}</span><span class="mobile-talk-subtitle">${safe(subtitle)}</span></button>`;
+        const unreadCount = Math.max(0, Number(conversation.unread_count ?? conversation.unreadCount ?? 0) || 0);
+        const unreadBadge = unreadCount > 0 ? `<span class="unread-count-badge" aria-label="未読${unreadCount}件">${unreadCount > 99 ? "99+" : unreadCount}</span>` : "";
+        return `<button type="button" class="mobile-talk-item ${currentConversation === conversation.id ? "selected" : ""}" onclick="openMobileTalk('${conversation.id}')"><span class="mobile-talk-name">${unreadBadge}${presence}<span class="mobile-talk-label">${safe(name)}</span></span><span class="mobile-talk-subtitle">${safe(subtitle)}</span></button>`;
       });
       mobileTalkList.innerHTML = mobileHtml.length
         ? mobileHtml.join("")
