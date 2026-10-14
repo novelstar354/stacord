@@ -1504,7 +1504,7 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
 
       <button type="button" id="themeSwitchBtn" class="theme-switch-btn" onclick="toggleTheme()">☀ 白テーマに切替</button>
 
-      <button type="button" id="enableNotifications" class="notification-enable" onclick="enableNotifications()">🔔 通知を有効にする</button>
+      <button type="button" id="enableNotifications" class="notification-enable" onclick="toggleNotifications()">🔔 通知を有効にする</button>
 
     </div>
 
@@ -1834,6 +1834,7 @@ let typingConversationId = null;
 let replyingToMessage = null;
 let notificationTimer = null;
 let notificationInitialized = false;
+let notificationsEnabled = (() => { try { return localStorage.getItem("stacord_notifications_enabled") !== "false"; } catch { return true; } })();
 const seenNotificationMessageIds = new Set();
 const seenNotificationRequestIds = new Set();
 
@@ -2357,12 +2358,15 @@ function updateNotificationButton(){
   const button = $("enableNotifications");
   if(!button) return;
   if(!('Notification' in window)){
-    button.textContent = "通知はこのブラウザーで利用できません";
-    button.disabled = true;
+    button.textContent = notificationsEnabled ? "通知はこのブラウザーで利用できません" : "🔕 通知はオフです";
+    button.disabled = false;
     return;
   }
-  if(Notification.permission === "granted"){
-    button.textContent = "🔔 通知は有効です";
+  if(!notificationsEnabled){
+    button.textContent = "🔕 通知はオフ（クリックでオン）";
+    button.disabled = false;
+  }else if(Notification.permission === "granted"){
+    button.textContent = "🔔 通知はオン（クリックでオフ）";
     button.disabled = false;
   }else if(Notification.permission === "denied"){
     button.textContent = "通知はブロック中（サイト設定を確認）";
@@ -2371,6 +2375,33 @@ function updateNotificationButton(){
     button.textContent = "🔔 通知を有効にする";
     button.disabled = false;
   }
+}
+
+function setNotificationsEnabled(enabled){
+  notificationsEnabled = Boolean(enabled);
+  try { localStorage.setItem("stacord_notifications_enabled", String(notificationsEnabled)); } catch {}
+  updateNotificationButton();
+  if(!notificationsEnabled){
+    toast("通知をオフにしました。未読バッジやメッセージは引き続き利用できます。");
+    return;
+  }
+  if(!('Notification' in window)){
+    toast("このブラウザーはデスクトップ通知に対応していません。");
+    return;
+  }
+  if(Notification.permission === "granted"){
+    if(!notificationInitialized){
+      checkNotifications(true).then(() => { notificationInitialized = true; });
+    }
+    startNotificationSync();
+    toast("通知をオンにしました。");
+  }else{
+    enableNotifications();
+  }
+}
+
+function toggleNotifications(){
+  setNotificationsEnabled(!notificationsEnabled);
 }
 
 async function enableNotifications(){
@@ -2388,16 +2419,21 @@ async function enableNotifications(){
     const permission = Notification.permission === "granted"
       ? "granted"
       : await Notification.requestPermission();
-    updateNotificationButton();
     if(permission !== "granted"){
+      notificationsEnabled = false;
+      try { localStorage.setItem("stacord_notifications_enabled", "false"); } catch {}
       toast("通知が許可されていません。");
+      updateNotificationButton();
       return;
     }
+    notificationsEnabled = true;
+    try { localStorage.setItem("stacord_notifications_enabled", "true"); } catch {}
     if(!notificationInitialized){
       await checkNotifications(true);
       notificationInitialized = true;
     }
     startNotificationSync();
+    updateNotificationButton();
     toast("新着メッセージとフレンド申請の通知を有効にしました。");
   }catch(error){
     console.error("notification permission:", error);
@@ -2406,7 +2442,7 @@ async function enableNotifications(){
 }
 
 function showBrowserNotification(title, body, conversationId = null){
-  if(!('Notification' in window) || Notification.permission !== "granted") return;
+  if(!notificationsEnabled || !('Notification' in window) || Notification.permission !== "granted") return;
   // チャットを開いていてページも表示中なら、不要なデスクトップ通知は出さない
   if(conversationId && currentConversation === conversationId && !document.hidden) return;
   try{
@@ -2439,7 +2475,7 @@ async function checkNotifications(silent = false){
       if(!id) continue;
       if(!seenNotificationRequestIds.has(id)){
         seenNotificationRequestIds.add(id);
-        if(!silent){
+        if(!silent && notificationsEnabled){
           const sender = Array.isArray(request.stacord_accounts) ? request.stacord_accounts[0] : request.stacord_accounts;
           showBrowserNotification("Stacord · フレンド申請", `${sender?.display_name || sender?.user_id || "ユーザー"} から申請が届きました。`);
           if(!document.hidden) toast("新しいフレンド申請が届きました。");
@@ -2461,7 +2497,7 @@ async function checkNotifications(silent = false){
         if(!id) continue;
         if(!seenNotificationMessageIds.has(id)){
           seenNotificationMessageIds.add(id);
-          if(!silent && !conversation.notifications_muted && message.sender_id !== account.id){
+          if(!silent && notificationsEnabled && !conversation.notifications_muted && message.sender_id !== account.id){
             const senderName = message.sender?.display_name || message.sender?.user_id || conversationName;
             const body = String(message.body || "新しいメッセージ");
             showBrowserNotification(`Stacord · ${senderName}`, body.slice(0, 180), conversation.id);
