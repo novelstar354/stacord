@@ -1286,6 +1286,23 @@ body[data-theme="light"] #app .chatitem.sel .chatname {
 body[data-theme="light"] #app .chatitem.sel .chatpreview {
   color: #5c4a91 !important;
 }
+
+/* Profile dialog */
+.profile-open-trigger{cursor:pointer;border-radius:10px;padding:6px;margin:-6px;transition:background .15s}
+.profile-open-trigger:hover{background:var(--panel-hover,rgba(127,127,127,.12))}
+.profile-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.58);display:flex;align-items:center;justify-content:center;padding:18px}
+.profile-modal.hidden{display:none}
+.profile-card{width:min(440px,100%);background:var(--panel,#171923);color:var(--text,#f5f5f7);border:1px solid var(--border,rgba(255,255,255,.14));border-radius:18px;padding:22px;box-shadow:0 20px 70px #0006}
+.profile-card h2{margin:0 0 18px;font-size:1.25rem}
+.profile-large-avatar{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:800;background:linear-gradient(135deg,#5865f2,#9b59b6);color:white;margin:0 auto 14px}
+.profile-card label{display:block;margin:12px 0 6px}
+.profile-card input{box-sizing:border-box;width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--border,rgba(127,127,127,.35));background:var(--input-bg,rgba(127,127,127,.1));color:inherit;font:inherit}
+.profile-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.profile-actions button{padding:9px 14px;border-radius:9px;cursor:pointer}
+.profile-save{background:#5865f2;color:#fff;border:0}
+.profile-cancel{background:transparent;color:inherit;border:1px solid var(--border,rgba(127,127,127,.35))}
+#profileError{color:#ff7272;font-size:.9rem;min-height:1.2em;margin-top:8px}
+
 </style>
 </head>
 
@@ -1461,7 +1478,7 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
 
       <div class="userrow">
 
-        <div class="usertext">
+        <div class="usertext profile-open-trigger" id="profileOpenTrigger" role="button" tabindex="0" title="プロフィールを開く" onclick="openProfile()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openProfile()}">
 
           <div
             class="avatar"
@@ -1792,6 +1809,20 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
   class="toast hidden"
 ></div>
 
+
+
+<div id="profileModal" class="profile-modal hidden" role="dialog" aria-modal="true" aria-labelledby="profileTitle" onclick="if(event.target===this)closeProfile()">
+  <div class="profile-card">
+    <h2 id="profileTitle">プロフィール</h2>
+    <div id="profileAvatarPreview" class="profile-large-avatar">S</div>
+    <label for="profileDisplayName">表示名（Display Name）</label>
+    <input id="profileDisplayName" maxlength="40" autocomplete="nickname" placeholder="表示名を入力">
+    <label>Stacord ID</label>
+    <div id="profileUserId" class="muted">@-</div>
+    <div id="profileError" role="status"></div>
+    <div class="profile-actions"><button type="button" class="profile-cancel" onclick="closeProfile()">キャンセル</button><button type="button" class="profile-save" id="profileSaveBtn" onclick="saveProfile()">保存</button></div>
+  </div>
+</div>
 
 <script>
 
@@ -2634,6 +2665,35 @@ function updateUserUI(){
 
 }
 
+
+/* =====================================================
+   PROFILE
+===================================================== */
+function openProfile(){
+  if(!account) return;
+  $("profileDisplayName").value = account.display_name || "";
+  $("profileUserId").textContent = "@" + (account.user_id || "-");
+  $("profileAvatarPreview").textContent = (account.display_name || account.user_id || "S").charAt(0).toUpperCase();
+  $("profileError").textContent = "";
+  $("profileModal").classList.remove("hidden");
+  setTimeout(() => $("profileDisplayName").focus(), 30);
+}
+function closeProfile(){ $("profileModal")?.classList.add("hidden"); }
+async function saveProfile(){
+  const displayName = $("profileDisplayName").value.trim();
+  if(!displayName){ $("profileError").textContent = "表示名を入力してください。"; return; }
+  if(displayName.length > 40){ $("profileError").textContent = "表示名は40文字以内にしてください。"; return; }
+  const button = $("profileSaveBtn"); button.disabled = true; button.textContent = "保存中…";
+  try{
+    const result = await api("update_profile", {display_name: displayName});
+    account = result.account || {...account, display_name: displayName};
+    saveAccountShortcut(account);
+    updateUserUI();
+    closeProfile();
+    if(typeof refreshAll === "function") await refreshAll();
+  }catch(error){ $("profileError").textContent = error.message || "プロフィールを保存できませんでした。"; }
+  finally{ button.disabled = false; button.textContent = "保存"; }
+}
 
 /* =====================================================
    LOGOUT
@@ -4834,7 +4894,7 @@ async function restoreSession(){
 })();
 
 
-window.addEventListener("DOMContentLoaded", () => applyTheme(document.body.dataset.theme));
+window.addEventListener("DOMContentLoaded", () => { applyTheme(document.body.dataset.theme); const profileInput = document.getElementById("profileDisplayName"); if(profileInput) profileInput.addEventListener("input", () => { document.getElementById("profileAvatarPreview").textContent = (profileInput.value.trim() || account?.user_id || "S").charAt(0).toUpperCase(); }); });
 </script>
 
 </body>
