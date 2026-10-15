@@ -3196,14 +3196,15 @@ async function loadRequests(){
             .map(
               request => {
 
+                // Edge Function returns request.sender; keep the legacy
+                // stacord_accounts fallback for older deployments.
                 const sender =
-                  Array.isArray(
-                    request.stacord_accounts
-                  )
-                    ? request
-                        .stacord_accounts[0]
-                    : request
-                        .stacord_accounts;
+                  request.sender ||
+                  (Array.isArray(request.stacord_accounts)
+                    ? request.stacord_accounts[0]
+                    : request.stacord_accounts) ||
+                  request.account ||
+                  null;
 
 
                 return `
@@ -3219,9 +3220,10 @@ async function loadRequests(){
   </h3>
 
   <p>
-    @${safe(
+    ID：@${safe(
       sender?.user_id ||
-      ""
+      sender?.username ||
+      "ID取得不可"
     )}
   </p>
 
