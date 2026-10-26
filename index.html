@@ -1309,6 +1309,9 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
 #attachImageBtn{flex:0 0 auto;border:1px solid var(--border-color,rgba(255,255,255,.18));border-radius:10px;padding:8px 11px;background:transparent;color:inherit;cursor:pointer}
 #attachImageBtn:disabled{opacity:.45;cursor:not-allowed}
 
+
+.chat-message-link{color:var(--accent,#60a5fa);text-decoration:underline;overflow-wrap:anywhere;}
+.chat-message-link:hover{opacity:.8;}
 </style>
 </head>
 
@@ -1908,6 +1911,37 @@ function safe(value){
       }[m])
     );
 
+}
+
+// Make HTTP(S) URLs clickable, except when immediately prefixed by a backslash.
+// All text is escaped before being returned as HTML.
+function linkifyMessageText(value){
+  const text = String(value ?? "");
+  const urlPattern = /https?:\/\/[^\s<>"']+/gi;
+  let result = "";
+  let lastIndex = 0;
+  let match;
+
+  while ((match = urlPattern.exec(text)) !== null) {
+    const start = match.index;
+    const fullMatch = match[0];
+    // A preceding backslash means the URL is intentionally plain text.
+    if (start > 0 && text[start - 1] === "\\") continue;
+
+    result += safe(text.slice(lastIndex, start));
+    const url = fullMatch.replace(/[),.!?;:]+$/, "");
+    const trailing = fullMatch.slice(url.length);
+    if (url) {
+      const escapedUrl = safe(url);
+      result += `<a href="${escapedUrl}" target="_blank" rel="noopener noreferrer" class="chat-message-link">${escapedUrl}</a>${safe(trailing)}`;
+    } else {
+      result += safe(fullMatch);
+    }
+    lastIndex = start + fullMatch.length;
+  }
+
+  result += safe(text.slice(lastIndex));
+  return result;
 }
 
 
@@ -3808,7 +3842,7 @@ async function loadMessages(){
       const safeImageUrl = /^https:\/\//i.test(imageUrl) ? imageUrl : "";
       const messageContent = safeImageUrl
         ? `<img class="chat-message-image" src="${safeAttr(safeImageUrl)}" alt="送信された画像" loading="lazy" style="cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth==='90vw'?'min(420px,70vw)':'90vw';this.style.maxHeight=this.style.maxHeight==='80vh'?'':'80vh'">`
-        : `<div class="msgbody" style="white-space:pre-wrap">${safe(rawBody)}</div>`;
+        : `<div class="msgbody" style="white-space:pre-wrap">${linkifyMessageText(rawBody)}</div>`;
       const reactionList = Array.isArray(message.reactions) ? message.reactions : [];
       const reactionButtons = reactionList.map(r => `<button type="button" class="reaction-chip ${r.mine ? "mine" : ""}" onclick="toggleReaction('${messageId}','${safeAttr(r.emoji)}')" title="${Number(r.count)||0}人がリアクション">${safe(r.emoji)} ${Number(r.count)||0}</button>`).join("");
       return `
