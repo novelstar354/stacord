@@ -2539,9 +2539,11 @@ async function checkNotifications(silent = false){
           if(!silent && notificationsEnabled && !conversation.notifications_muted && message.sender_id !== account.id){
             const senderName = message.sender?.display_name || message.sender?.user_id || conversationName;
             const body = String(message.body || "新しいメッセージ");
-            showBrowserNotification(`Stacord · ${senderName}`, body.slice(0, 180), conversation.id);
+            const isImageMessage = body.startsWith("STACORD_IMAGE:");
+            const notificationBody = isImageMessage ? "画像が送信されました" : body.slice(0, 180);
+            showBrowserNotification(`Stacord · ${senderName}`, notificationBody, conversation.id);
             if(!document.hidden && currentConversation !== conversation.id){
-              toast(`${senderName} から新しいメッセージが届きました。`);
+              toast(isImageMessage ? "画像が送信されました" : `${senderName} から新しいメッセージが届きました。`);
             }
           }
         }
@@ -3805,7 +3807,7 @@ async function loadMessages(){
       const imageUrl = rawBody.startsWith(imagePrefix) ? rawBody.slice(imagePrefix.length).trim() : "";
       const safeImageUrl = /^https:\/\//i.test(imageUrl) ? imageUrl : "";
       const messageContent = safeImageUrl
-        ? `<a class="chat-image-link" href="${safeAttr(safeImageUrl)}" target="_blank" rel="noopener noreferrer"><img class="chat-message-image" src="${safeAttr(safeImageUrl)}" alt="送信された画像" loading="lazy"></a>`
+        ? `<img class="chat-message-image" src="${safeAttr(safeImageUrl)}" alt="送信された画像" loading="lazy" style="cursor:zoom-in" onclick="this.style.maxWidth=this.style.maxWidth==='90vw'?'min(420px,70vw)':'90vw';this.style.maxHeight=this.style.maxHeight==='80vh'?'':'80vh'">`
         : `<div class="msgbody" style="white-space:pre-wrap">${safe(rawBody)}</div>`;
       const reactionList = Array.isArray(message.reactions) ? message.reactions : [];
       const reactionButtons = reactionList.map(r => `<button type="button" class="reaction-chip ${r.mine ? "mine" : ""}" onclick="toggleReaction('${messageId}','${safeAttr(r.emoji)}')" title="${Number(r.count)||0}人がリアクション">${safe(r.emoji)} ${Number(r.count)||0}</button>`).join("");
