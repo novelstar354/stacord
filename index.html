@@ -1303,6 +1303,12 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
 .profile-cancel{background:transparent;color:inherit;border:1px solid var(--border,rgba(127,127,127,.35))}
 #profileError{color:#ff7272;font-size:.9rem;min-height:1.2em;margin-top:8px}
 
+
+.chat-image-link{display:block;max-width:min(420px,70vw);margin:4px 0}
+.chat-message-image{display:block;max-width:100%;max-height:420px;object-fit:contain;border-radius:12px;border:1px solid var(--border-color,rgba(255,255,255,.15));background:rgba(0,0,0,.08)}
+#attachImageBtn{flex:0 0 auto;border:1px solid var(--border-color,rgba(255,255,255,.18));border-radius:10px;padding:8px 11px;background:transparent;color:inherit;cursor:pointer}
+#attachImageBtn:disabled{opacity:.45;cursor:not-allowed}
+
 </style>
 </head>
 
@@ -1722,6 +1728,8 @@ body[data-theme="light"] #app .chatitem.sel .chatpreview {
 
             <div class="composer">
 
+              <button type="button" id="attachImageBtn" title="画像を送信" aria-label="画像を送信" disabled>📷</button>
+              <input type="file" id="imageFileInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
               <input
                 id="messageInput"
                 placeholder="メッセージ..."
@@ -2767,6 +2775,7 @@ function logoutLocal(){
 
   $("sendMsg").disabled =
     true;
+  if($("attachImageBtn")) $("attachImageBtn").disabled = true;
 
 }
 
@@ -3695,6 +3704,7 @@ async function leaveConversation(conversationId){
       $("messageInput").value = "";
       $("messageInput").disabled = true;
       $("sendMsg").disabled = true;
+  if($("attachImageBtn")) $("attachImageBtn").disabled = true;
     }
     await loadConversations();
     toast(`${kind}から退会しました。`);
@@ -3757,6 +3767,7 @@ async function selectConversation(id){
 
   $("sendMsg").disabled =
     false;
+  if($("attachImageBtn")) $("attachImageBtn").disabled = false;
 
 
   await loadMessages();
@@ -3789,13 +3800,20 @@ async function loadMessages(){
       const messageId = String(message.id || "");
       const senderName = mine ? "自分" : (message.sender?.display_name || message.sender?.user_id || "相手");
       const reply = message.reply_to || null;
+      const rawBody = String(message.body || "");
+      const imagePrefix = "STACORD_IMAGE:";
+      const imageUrl = rawBody.startsWith(imagePrefix) ? rawBody.slice(imagePrefix.length).trim() : "";
+      const safeImageUrl = /^https:\/\//i.test(imageUrl) ? imageUrl : "";
+      const messageContent = safeImageUrl
+        ? `<a class="chat-image-link" href="${safeAttr(safeImageUrl)}" target="_blank" rel="noopener noreferrer"><img class="chat-message-image" src="${safeAttr(safeImageUrl)}" alt="送信された画像" loading="lazy"></a>`
+        : `<div class="msgbody" style="white-space:pre-wrap">${safe(rawBody)}</div>`;
       const reactionList = Array.isArray(message.reactions) ? message.reactions : [];
       const reactionButtons = reactionList.map(r => `<button type="button" class="reaction-chip ${r.mine ? "mine" : ""}" onclick="toggleReaction('${messageId}','${safeAttr(r.emoji)}')" title="${Number(r.count)||0}人がリアクション">${safe(r.emoji)} ${Number(r.count)||0}</button>`).join("");
       return `
         <div class="msg ${mine ? "mine" : ""}" data-message-id="${safeAttr(messageId)}">
           <div class="msg-bubble">
             ${reply ? `<div class="reply-preview">↪ ${safe(reply.sender_name || "メッセージ")}：${safe(reply.body || "（送信取り消し）")}</div>` : ""}
-            <div class="msgbody" style="white-space:pre-wrap">${safe(message.body)}</div>
+            ${messageContent}
             <small>${safe(senderName)} · ${safe(formatMessageTime(message.created_at))}${message.edited_at ? " · 編集済み" : ""}</small>
           </div>
           ${mine && Number(message.read_by_count) > 0 ? `<div class="read-receipt">既読${Number(message.other_member_count) > 1 ? ` ${Number(message.read_by_count)}` : ""}</div>` : ""}
@@ -3968,6 +3986,49 @@ function stopTypingForConversation(conversationId){
 /* =====================================================
    SEND MESSAGE
 ===================================================== */
+
+async function sendChatImage(file){
+  if(!currentConversation || !sessionToken){ toast("先にチャットを選択してください。"); return; }
+  if(!file) return;
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if(!allowed.includes(file.type)){ toast("PNG・JPEG・WebP・GIF画像を選択してください。"); return; }
+  if(file.size > 5 * 1024 * 1024){ toast("画像は5MB以下にしてください。"); return; }
+  const conversationId = currentConversation;
+  const attach = $("attachImageBtn");
+  const send = $("sendMsg");
+  if(attach) attach.disabled = true;
+  if(send) send.disabled = true;
+  try{
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("画像ファイルを読み込めませんでした。"));
+      reader.readAsDataURL(file);
+    });
+    const uploaded = await api("upload_chat_image", { conversation_id: conversationId, file_name: file.name, mime_type: file.type, data_url: dataUrl });
+    if(!uploaded?.url) throw new Error(uploaded?.error || "画像をアップロードできませんでした。");
+    const sent = await api("send_message", { conversation_id: conversationId, body: "STACORD_IMAGE:" + uploaded.url, reply_to_message_id: replyingToMessage?.id || null });
+    if(!sent?.ok && !sent?.message) throw new Error(sent?.error || "画像メッセージを送信できませんでした。");
+    cancelReply();
+    await loadMessages();
+    await loadConversations();
+    toast("画像を送信しました。");
+  }catch(error){
+    console.error("sendChatImage error:", error);
+    toast(error?.message || "画像を送信できませんでした。");
+  }finally{
+    if(attach) attach.disabled = !currentConversation;
+    if(send) send.disabled = !currentConversation;
+    const picker = $("imageFileInput"); if(picker) picker.value = "";
+  }
+}
+
+const attachImageBtn = $("attachImageBtn");
+const imageFileInput = $("imageFileInput");
+if(attachImageBtn && imageFileInput){
+  attachImageBtn.addEventListener("click", () => { if(currentConversation) imageFileInput.click(); else toast("チャットを選択してください。"); });
+  imageFileInput.addEventListener("change", () => { const file = imageFileInput.files?.[0]; if(file) sendChatImage(file); });
+}
 
 async function sendMessage(){
 
